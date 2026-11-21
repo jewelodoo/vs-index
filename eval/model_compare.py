@@ -6,18 +6,22 @@ from PIL import Image
 CAT = sys.argv[1]
 RAW = "https://raw.githubusercontent.com/jewelodoo/vs-index/"
 HF = "https://huggingface.co/Xenova/"
+DV3 = "https://huggingface.co/onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX/resolve/main/onnx/"
 MODELS = {
   "dinov2_small": (HF + "dinov2-small/resolve/main/onnx/model_quantized.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-  "dinov3_small": ("https://huggingface.co/onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX/resolve/main/onnx/model_quantized.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-  "dinov3_small_fp16": ("https://huggingface.co/onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX/resolve/main/onnx/model_fp16.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-  "siglip_b16": (HF + "siglip-base-patch16-224/resolve/main/onnx/vision_model_quantized.onnx", "pool", [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-  "siglip2_b16": ("https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/vision_model_quantized.onnx", "pool", [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+  "dinov3_small": (DV3 + "model_quantized.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+  "dinov3_small_fp32": (DV3 + "model.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 }
 sess = {}
 for name, (url, out, m, s) in MODELS.items():
     try:
-        r = requests.get(url, timeout=600); r.raise_for_status(); open(name + ".onnx", "wb").write(r.content)
-        se = ort.InferenceSession(name + ".onnx", providers=["CPUExecutionProvider"])
+        import os
+        os.makedirs(name, exist_ok=True); fn = url.rsplit("/", 1)[1]
+        r = requests.get(url, timeout=600); r.raise_for_status(); open(os.path.join(name, fn), "wb").write(r.content)
+        for ext in ("_data", ".data"):   # external weights next to the graph, if the repo has them
+            rr = requests.get(url + ext, timeout=600)
+            if rr.ok: open(os.path.join(name, fn + ext), "wb").write(rr.content); print("MODEL", name, "external data", fn + ext, round(len(rr.content) / 1e6, 1), "MB", flush=True)
+        se = ort.InferenceSession(os.path.join(name, fn), providers=["CPUExecutionProvider"])
         sess[name] = (se, out, np.array(m, np.float32), np.array(s, np.float32)); print("MODEL", name, round(len(r.content) / 1e6, 1), "MB", flush=True)
     except Exception as e: print("MODEL", name, "unavailable", e, flush=True)
 def run(name, ims):
