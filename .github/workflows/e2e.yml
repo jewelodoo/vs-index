@@ -1,0 +1,17 @@
+name: Visual search e2e
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["eval/e2e.mjs", ".github/workflows/e2e.yml"]
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm i playwright@1 && npx playwright install --with-deps chromium
+      - run: node eval/e2e.mjs
