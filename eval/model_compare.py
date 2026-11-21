@@ -8,9 +8,10 @@ RAW = "https://raw.githubusercontent.com/jewelodoo/vs-index/"
 HF = "https://huggingface.co/Xenova/"
 MODELS = {
   "dinov2_small": (HF + "dinov2-small/resolve/main/onnx/model_quantized.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-  "dinov2_base":  (HF + "dinov2-base/resolve/main/onnx/model_quantized.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-  "clip_b32":     (HF + "clip-vit-base-patch32/resolve/main/onnx/vision_model_quantized.onnx", "image_embeds", [0.4815, 0.4578, 0.4082], [0.2686, 0.2613, 0.2758]),
-  "clip_b16":     (HF + "clip-vit-base-patch16/resolve/main/onnx/vision_model_quantized.onnx", "image_embeds", [0.4815, 0.4578, 0.4082], [0.2686, 0.2613, 0.2758]),
+  "dinov3_small": ("https://huggingface.co/onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX/resolve/main/onnx/model_quantized.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+  "dinov3_small_fp16": ("https://huggingface.co/onnx-community/dinov3-vits16-pretrain-lvd1689m-ONNX/resolve/main/onnx/model_fp16.onnx", "cls", [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+  "siglip_b16": (HF + "siglip-base-patch16-224/resolve/main/onnx/vision_model_quantized.onnx", "pool", [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+  "siglip2_b16": ("https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/vision_model_quantized.onnx", "pool", [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
 }
 sess = {}
 for name, (url, out, m, s) in MODELS.items():
@@ -22,10 +23,15 @@ for name, (url, out, m, s) in MODELS.items():
 def run(name, ims):
     se, out, M, S = sess[name]
     x = np.stack([(np.asarray(i.convert("RGB").resize((224, 224), Image.BICUBIC), np.float32) / 255 - M) / S for i in ims]).transpose(0, 3, 1, 2)
+    if "float16" in se.get_inputs()[0].type: x = x.astype(np.float16)
     outs = {o.name: v for o, v in zip(se.get_outputs(), se.run(None, {se.get_inputs()[0].name: x}))}
     if out == "cls": v = outs[se.get_outputs()[0].name][:, 0, :]; tok = outs[se.get_outputs()[0].name]
-    else: v = outs.get("image_embeds", list(outs.values())[0]); tok = None
-    v = v / np.linalg.norm(v, axis=1, keepdims=True); return v, tok
+    else:
+        v = outs.get("image_embeds", outs.get("pooler_output"))
+        if v is None: v = list(outs.values())[0]
+        if v.ndim == 3: v = v.mean(1)
+        tok = None
+    v = v.astype(np.float32); v = v / np.linalg.norm(v, axis=1, keepdims=True); return v, tok
 def autobox(tok, keep=.15, margin=.12):
     P = tok[1:]; g = int(len(P) ** .5); Pn = P / np.linalg.norm(P, axis=1, keepdims=True)
     c = Pn - Pn.mean(0); s = c @ np.linalg.svd(c, full_matrices=False)[2][0]; G = s.reshape(g, g)
