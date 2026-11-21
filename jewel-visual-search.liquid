@@ -180,7 +180,9 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   function analyse(E,m,img,auto){
     return embedAll(E,queryCrops(img,m)).then(function(V){
       if(!auto||!V.tok) return V;
+      if(st.sel) return V; // the shopper drew a box meanwhile: that box will be searched instead
       var r;try{r=autobox(V.tok);}catch(e){return V;}
+      window.__jvsBox=r;
       if(!r||r.w*r.h>0.85||r.w<.1||r.h<.1) return V;
       var W=img.width,H=img.height,piece=sub(img,r.x*W,r.y*H,r.w*W,r.h*H);
       return embedAll(E,queryCrops(piece,m)).then(function(V2){return V.concat(V2);},function(){return V;});
