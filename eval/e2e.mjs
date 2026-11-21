@@ -31,7 +31,8 @@ for (const [file, target, sel] of tests) {
   await page.waitForSelector('.jvs-res a', { timeout: 90000 });
   const t2 = Date.now();
   const r = await page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, top: as.slice(0, 3).map(a => a.textContent.trim().slice(0, 30)) }; }, target);
-  console.log('E2E', file, sel ? 'selected' : 'whole', 'hint=' + hint, 'wait_after_click_ms=' + (t2 - t1), 'from_pick_ms=' + (t2 - t0), JSON.stringify(r));
+  const box = await page.evaluate(() => window.__jvsBox ? Object.values(window.__jvsBox).map(v => v.toFixed(2)) : null);
+  console.log('E2E', file, 'box=' + JSON.stringify(box), sel ? 'selected' : 'whole', 'hint=' + hint, 'wait_after_click_ms=' + (t2 - t1), 'from_pick_ms=' + (t2 - t0), JSON.stringify(r));
   await page.evaluate(() => document.querySelector('.jvs-x').click());
   await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(3000);
 }
