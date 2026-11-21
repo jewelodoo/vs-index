@@ -5,6 +5,7 @@ import os, sys, json, time, pickle, hashlib, io, concurrent.futures as cf
 import numpy as np, requests
 from PIL import Image
 import onnxruntime as ort
+import neighbors
 
 STORE = os.environ.get("STORE", "https://sa-jewel.com")
 MODEL_URL = "https://huggingface.co/Xenova/dinov2-small/resolve/main/onnx/model_quantized.onnx"  # DINOv2-small, int8
@@ -114,11 +115,17 @@ def main():
         V = np.concatenate(vecs)
         q = np.clip(np.round(V * 127), -127, 127).astype(np.int8)
         q.tofile(f"out/{key}.bin")
-        json.dump({"handles": hs, "counts": counts}, open(f"out/{key}.json", "w"), separators=(",", ":"))
+        json.dump({"handles": hs, "ids": [allp[h]["id"] for h in hs], "counts": counts}, open(f"out/{key}.json", "w"), separators=(",", ":"))
         cats.append({"key": key, "label": label, "products": len(hs), "vectors": int(len(V))})
     json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
               open("out/manifest.json", "w"), ensure_ascii=False, indent=1)
     print("done", cats)
+    prod = []
+    for key, _, _ in CATS:
+        for h in members[key]:
+            vv = [cache[u] for u in img_urls(allp[h]) if u in cache]
+            if vv: prod.append((allp[h]["id"], h, key, np.concatenate(vv).astype(np.float32)))
+    neighbors.build(prod, None, mean, W)
 
 if __name__ == "__main__":
     main()

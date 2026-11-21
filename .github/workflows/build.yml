@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["build_index.py", ".github/workflows/build.yml"]
+    paths: ["build_index.py", "neighbors.py", "eval/groups.json", ".github/workflows/build.yml"]
 permissions:
   contents: write
 concurrency: build-index
