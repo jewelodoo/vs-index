@@ -36,3 +36,33 @@ for f, cat, target in TESTS:
         for an, a in aggs.items():
             order = np.argsort(-a); rank = int(np.where(np.array(hs)[order] == target)[0][0]) + 1
             print(f"RESULT {f:14s} {sn:12s} {an:8s} rank={rank:4d} top3={[hs[i] for i in order[:3]]}")
+
+# ---- auto-crop: find the piece from DINOv2 patch tokens, then search the crop ----
+def tokens(im):
+    x = ((np.asarray(im.convert("RGB").resize((224, 224), Image.BILINEAR), np.float32) / 255 - MEAN) / STD).transpose(2, 0, 1)[None]
+    return sess.run(None, {inp: x})[0][0]          # (257, 384)
+def autobox(im, method, keep=0.25, margin=0.12):
+    t = tokens(im); cls, P = t[0], t[1:]; g = int(len(P) ** .5)
+    Pn = P / np.linalg.norm(P, axis=1, keepdims=True)
+    if method == "pca":
+        c = Pn - Pn.mean(0); u = np.linalg.svd(c, full_matrices=False)[2][0]; s = c @ u
+        grid = s.reshape(g, g); centre = grid[g//4:3*g//4, g//4:3*g//4].mean(); border = np.r_[grid[0], grid[-1], grid[:, 0], grid[:, -1]].mean()
+        if centre < border: s = -s
+    else:  # "cls": patches most like the image summary
+        s = Pn @ (cls / np.linalg.norm(cls))
+    m = (s >= np.quantile(s, 1 - keep)).reshape(g, g)
+    ys, xs = np.where(m); x0, x1, y0, y1 = xs.min() / g, (xs.max() + 1) / g, ys.min() / g, (ys.max() + 1) / g
+    w, h = im.size; mx, my = (x1 - x0) * margin, (y1 - y0) * margin
+    box = (max(0, x0 - mx) * w, max(0, y0 - my) * h, min(1, x1 + mx) * w, min(1, y1 + my) * h)
+    return im.crop(tuple(int(v) for v in box)), [round(v / s_, 2) for v, s_ in zip(box, (w, h, w, h))]
+for f, cat, target in TESTS:
+    meta, V, owner = cache[cat]; hs = meta["handles"]
+    im = Image.open(io.BytesIO(requests.get(RAW + "queries/" + f).content))
+    for method in ("pca", "cls"):
+        for keep in (0.2, 0.35, 0.5):
+            crop, box = autobox(im, method, keep)
+            for mode in ("crop", "crop+orig"):
+                Q = emb(crops(crop, M["crops"]) + (crops(im, M["crops"]) if mode == "crop+orig" else []))
+                S = Q @ V.T; P = np.full((len(Q), len(hs)), -9.0); np.maximum.at(P.T, owner, S.T); a = P.max(0)
+                order = np.argsort(-a); rank = int(np.where(np.array(hs)[order] == target)[0][0]) + 1
+                print(f"AUTO {f:14s} {method:4s} keep={keep} {mode:9s} box={box} rank={rank}")
