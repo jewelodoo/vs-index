@@ -34,7 +34,8 @@ TESTS = [  # file, category, regex on the product title that counts as a hit
  ("1.jpg", "necklaces", r"دورين 707"), ("2.jpg", "bracelets", r"كارتير"), ("3.jpg", "bracelets", r"بولغاري.*خيط|خيط.*بولغاري"),
  ("4.jpg", "rings", r"توري"), ("5.jpg", "earrings", r"سي اتش|كارولينا"), ("6.jpg", "bracelets", r"فان كليف"),
  ("7.jpg", "necklaces", r"سواروفسكي.*ملون"), ("8.jpg", "bracelets", r"فندي زركون بيق لوقو"), ("9.jpg", "bracelets", r"لويس فيتون.*سمبل"),
- ("10.jpg", "bracelets", r"سواروفسكي"), ("11.jpg", "rings", r"فندي")]
+ ("10.jpg", "bracelets", r"سواروفسكي"), ("11.jpg", "rings", r"فندي"),
+ ("../dior_full.jpg", "earrings", r"ديور لولو ذهبي بالشعار"), ("../dior_sel.jpg", "earrings", r"ديور لولو ذهبي بالشعار")]
 cache = {}
 def catdata(cat):
     if cat not in cache:
@@ -45,7 +46,7 @@ def rank(Q, cat, rx):
     hs, V, owner = catdata(cat); S = Q @ V.T; P = np.full((len(Q), len(hs)), -9.0); np.maximum.at(P.T, owner, S.T); a = P.max(0)
     order = np.argsort(-a); hits = [k for k, i in enumerate(order) if re.search(rx, titles.get(hs[i], ""))]
     return (hits[0] + 1 if hits else 999), [titles.get(hs[i], hs[i])[:28] for i in order[:3]]
-STRATS = ["full7", "auto_pca_.1", "auto_pca_.15", "auto_pca_.2", "auto_pca_.3", "auto_cls_.2", "autoonly_pca_.2"]
+STRATS = ["full7", "auto_pca_.08", "auto_pca_.1", "auto_pca_.12", "auto_pca_.15", "auto_pca_.2"]
 tot = {s: [] for s in STRATS}
 for f, cat, rx in TESTS:
     im = Image.open(io.BytesIO(requests.get(RAW + "queries/t/" + f).content)).convert("RGB"); im.thumbnail((900, 900))
