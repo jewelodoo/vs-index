@@ -4,14 +4,15 @@ No store credentials are used: only the public /products.json feeds."""
 import os, sys, json, time, pickle, hashlib, io, concurrent.futures as cf
 import numpy as np, requests
 from PIL import Image
-import mediapipe as mp
-from mediapipe.tasks.python import vision, BaseOptions
+import onnxruntime as ort
 
 STORE = os.environ.get("STORE", "https://sa-jewel.com")
-MODEL_URL = "https://storage.googleapis.com/mediapipe-models/image_embedder/mobilenet_v3_large/float32/latest/mobilenet_v3_large.tflite"
-DIM = 64            # PCA output size
+MODEL_URL = "https://huggingface.co/Xenova/dinov2-small/resolve/main/onnx/model_quantized.onnx"  # DINOv2-small, int8
+MEAN = np.array([0.485, 0.456, 0.406], np.float32); STD = np.array([0.229, 0.224, 0.225], np.float32)
+SIZE = 224
+DIM = 96            # PCA output size
 IMGS = 2            # images per product
-CACHE = "cache/emb.pkl"
+CACHE = "cache/emb_dino.pkl"
 CATS = [  # key, Arabic label, collection handle (None = everything else)
     ("bracelets", "أساور", "accessories-bracelet"),
     ("necklaces", "سلاسل", "accessories-necklace"),
@@ -45,10 +46,14 @@ def crops(im):
 
 def main():
     os.makedirs("out", exist_ok=True); os.makedirs("cache", exist_ok=True)
-    if not os.path.exists("model.tflite"):
-        open("model.tflite", "wb").write(S.get(MODEL_URL, timeout=120).content)
-    emb = vision.ImageEmbedder.create_from_options(vision.ImageEmbedderOptions(
-        base_options=BaseOptions(model_asset_path="model.tflite"), l2_normalize=True))
+    if not os.path.exists("model.onnx"):
+        open("model.onnx", "wb").write(S.get(MODEL_URL, timeout=300).content)
+    sess = ort.InferenceSession("model.onnx", providers=["CPUExecutionProvider"])
+    inp = sess.get_inputs()[0].name
+    def embed(ims):
+        x = np.stack([(np.asarray(i.resize((SIZE, SIZE), Image.BILINEAR), np.float32) / 255 - MEAN) / STD for i in ims]).transpose(0, 3, 1, 2)
+        o = sess.run(None, {inp: x})[0][:, 0, :]
+        return o / np.linalg.norm(o, axis=1, keepdims=True)
     cache = pickle.load(open(CACHE, "rb")) if os.path.exists(CACHE) else {}
 
     allp = {p["handle"]: p for p in feed("/products.json")}
@@ -80,8 +85,7 @@ def main():
     with cf.ThreadPoolExecutor(12) as ex:
         for u, im in ex.map(fetch, todo):
             if im is None: continue
-            vs = [emb.embed(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(np.asarray(c)))).embeddings[0].embedding for c in crops(im)]
-            cache[u] = np.asarray(vs, dtype=np.float16); done += 1
+            cache[u] = embed(crops(im)).astype(np.float16); done += 1
             if done % 500 == 0:
                 print("embedded", done); pickle.dump(cache, open(CACHE, "wb"))
     live = {u for p in allp.values() for u in img_urls(p)}
@@ -112,7 +116,7 @@ def main():
         q.tofile(f"out/{key}.bin")
         json.dump({"handles": hs, "counts": counts}, open(f"out/{key}.json", "w"), separators=(",", ":"))
         cats.append({"key": key, "label": label, "products": len(hs), "vectors": int(len(V))})
-    json.dump({"version": version, "dim": DIM, "model": MODEL_URL, "crops": CROPS, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
+    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
               open("out/manifest.json", "w"), ensure_ascii=False, indent=1)
     print("done", cats)
 
