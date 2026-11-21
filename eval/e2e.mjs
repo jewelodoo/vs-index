@@ -1,3 +1,4 @@
+// run: auto-crop check
 // End-to-end: open the preview theme on a phone-sized Chrome, run a visual search, report rank and timings.
 import { chromium, devices } from 'playwright';
 const URL0 = 'https://sa-jewel.com/?preview_theme_id=132002938938';
