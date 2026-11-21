@@ -1,7 +1,7 @@
 {%- comment -%}
   Jewel: البحث بالصورة (Visual search).
   Index is rebuilt daily by GitHub Actions (jewelodoo/vs-index, branch data).
-  Model runs in the shopper's browser (DINOv2-small int8 ONNX via onnxruntime-web).
+  Model runs in the shopper's browser: the one the index manifest names (DINOv2-small via onnxruntime-web, or MediaPipe MobileNetV3).
 {%- endcomment -%}
 <style>
 .jvs-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:none;border:0;padding:0;color:currentColor;cursor:pointer}
@@ -12,6 +12,7 @@
 html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-sh{position:absolute;inset:auto 0 0 0;max-height:92vh;max-height:88dvh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;color:#111;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));direction:rtl;font-family:var(--font-body-family);box-sizing:border-box}
 @media (min-width:750px){.jvs-sh{inset:5vh auto auto 50%;transform:translateX(-50%);width:min(760px,94vw);border-radius:16px;max-height:90vh}}
+@media (max-width:749px){.jvs-sh{bottom:var(--jvs-b,0px)!important}}.jvs-ov[style*="--jvs-b"] .jvs-sh{border-radius:16px}
 .jvs-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .jvs-hd b{font-size:17px}
 .jvs-x{background:none;border:0;font-size:26px;line-height:1;cursor:pointer;color:#111}
@@ -20,8 +21,8 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-cats button.on{background:#111;color:#fff;border-color:#111}
 .jvs-pick{display:flex;gap:10px;margin-bottom:12px}
 .jvs-pick label{flex:1;text-align:center;border:1px dashed #aaa;border-radius:12px;padding:12px 4px;cursor:pointer;font-size:13px;white-space:nowrap}
-@media (max-width:749px){.jvs-sh{bottom:var(--jvs-b,0px)!important}}.jvs-ov[style*="--jvs-b"] .jvs-sh{border-radius:16px}
-.jvs-pick input{display:none}
+.jvs-pick label{position:relative;overflow:hidden}
+.jvs-pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
 .jvs-stage{position:relative;display:none;width:fit-content;margin:0 auto 10px;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;overflow:hidden;border-radius:10px}
 .jvs-stage canvas{display:block;max-width:100%;max-height:30vh;max-height:30dvh;width:auto;height:auto;border-radius:10px}
 @media (min-width:750px){.jvs-stage canvas{max-height:45vh}}
@@ -35,12 +36,19 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-res a{color:inherit;text-decoration:none;font-size:13px;line-height:1.4}
 .jvs-res img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#f4f4f4;display:block;margin-bottom:6px}
 .jvs-res .p{font-weight:600;margin-top:2px}
+.jvs-hint{position:absolute;inset:0;pointer-events:none;background:rgba(0,0,0,.28);color:#fff;opacity:0;transition:opacity .3s}
+.jvs-hint.on{opacity:1}
+.jvs-hint i{position:absolute;border:2px dashed #fff;border-radius:6px;animation:jvsBox 1.4s ease-in-out infinite}
+.jvs-hint b{position:absolute;font-size:28px;line-height:1;animation:jvsFinger 1.4s ease-in-out infinite}
+.jvs-hint span{position:absolute;left:8px;right:8px;bottom:10px;text-align:center;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+@keyframes jvsBox{0%{left:30%;top:28%;width:0;height:0;opacity:.3}65%,100%{left:22%;top:18%;width:56%;height:52%;opacity:1}}
+@keyframes jvsFinger{0%{left:27%;top:25%}65%,100%{left:72%;top:64%}}
 </style>
 <script>
 (function(){
   var BASE='https://cdn.jsdelivr.net/gh/jewelodoo/vs-index@data/';
-  var ORT='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
-  var MEAN=[0.485,0.456,0.406],STD=[0.229,0.224,0.225];
+  var MP='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3';
+  var ORT='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
   var TOP=24, ov, st={};
   var CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.3-2h7l1.3 2h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.8"/></svg>';
 
@@ -72,7 +80,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       '<div class="jvs-hd"><b>ابحث بالصورة</b><button class="jvs-x" aria-label="إغلاق">&times;</button></div>'+
       '<div class="jvs-tip" style="text-align:right;margin:0">وش نوع القطعة؟</div><div class="jvs-cats"></div>'+
       '<div class="jvs-pick"><label>📷 صوّر القطعة بالكاميرا<input type="file" accept="image/*" capture="environment"></label><label>🖼️ اختر من الصور<input type="file" accept="image/*"></label></div>'+
-      '<div class="jvs-stage"><canvas></canvas><div class="jvs-sel"></div></div>'+
+      '<div class="jvs-stage"><canvas></canvas><div class="jvs-sel"></div><div class="jvs-hint"><i></i><b>👆</b><span>اسحب حول القطعة لنتيجة أدق</span></div></div>'+
       '<div class="jvs-tip jvs-croptip" style="display:none">اسحب بإصبعك حول القطعة عشان نتيجة أدق</div>'+
       '<button class="jvs-go">ابحث</button><div class="jvs-msg"></div><div class="jvs-res"></div></div></div>');
     document.body.appendChild(ov);
@@ -93,32 +101,66 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   function updateGo(){ var g=ov.querySelector('.jvs-go'); g.style.display=st.img?'block':'none'; g.disabled=!(st.img&&st.cat); g.textContent=st.cat?'ابحث':'اختر نوع القطعة أول'; }
 
   var _m;
-  var _mf;
-  function manifest(){ return _m||(_m=fetch(BASE+'manifest.json?h='+new Date().toISOString().slice(0,13)).then(function(r){if(!r.ok) throw 0; return r.json();}).then(function(m){_mf=m;return m;})); }
+  function manifest(){ return _m||(_m=fetch(BASE+'manifest.json?d='+new Date().toISOString().slice(0,10)).then(function(r){if(!r.ok) throw 0; return r.json();})); }
   var _e;
+  // the model named in the index manifest: DINOv2 (ONNX, run with onnxruntime-web) or the older MediaPipe one.
+  // Both give embed(canvas) -> Promise of an l2-normalised vector, made the same way as build_index.py.
   function embedder(){
-    return _e||(_e=Promise.all([import(ORT+'ort.wasm.min.mjs'),manifest()]).then(function(a){
-      var ort=a[0],m=a[1];
-      if(m.arch!=='dinov2-small') throw new Error('index-updating');
+    return _e||(_e=manifest().then(function(m){ return /dinov2/i.test(m.arch||'')?dino(m):mediapipe(m); }));
+  }
+  function dino(m){
+    return import(ORT+'ort.wasm.min.mjs').then(function(ort){
       ort.env.wasm.wasmPaths=ORT; ort.env.wasm.numThreads=1;
       return ort.InferenceSession.create(m.model,{executionProviders:['wasm']}).then(function(sess){
-        st.ready=true;
-        var S=m.size||224;
-        return {embed:function(c){
-          var t=document.createElement('canvas');t.width=S;t.height=S;var g=t.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(c,0,0,S,S);
-          var px=g.getImageData(0,0,S,S).data,N=S*S,x=new Float32Array(3*N);
-          for(var i=0;i<N;i++){for(var ch=0;ch<3;ch++) x[ch*N+i]=(px[i*4+ch]/255-MEAN[ch])/STD[ch];}
-          var feeds={};feeds[sess.inputNames[0]]=new ort.Tensor('float32',x,[1,3,S,S]);
-          return sess.run(feeds).then(function(o){var d=o[sess.outputNames[0]].data,dim=o[sess.outputNames[0]].dims[2],v=new Float32Array(dim),n=0;for(var k=0;k<dim;k++){v[k]=d[k];n+=d[k]*d[k];}n=Math.sqrt(n)||1;for(k=0;k<dim;k++)v[k]/=n;return v;});
+        var S=m.size||224,MEAN=[0.485,0.456,0.406],STD=[0.229,0.224,0.225];
+        function px(cv,x,o){var c=document.createElement('canvas');c.width=S;c.height=S;var g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(cv,0,0,S,S);var d=g.getImageData(0,0,S,S).data,n=S*S;for(var i=0;i<n;i++){for(var ch=0;ch<3;ch++) x[o+ch*n+i]=(d[i*4+ch]/255-MEAN[ch])/STD[ch];}}
+        return {embedMany:function(cvs){
+          var N=cvs.length,L=3*S*S,x=new Float32Array(N*L);
+          cvs.forEach(function(cv,k){px(cv,x,k*L);});
+          var feed={};feed[sess.inputNames[0]]=new ort.Tensor('float32',x,[N,3,S,S]);
+          return sess.run(feed).then(function(out){
+            var t=out[sess.outputNames[0]],T=t.dims[1],D=t.dims[2],res=[];
+            for(var k=0;k<N;k++){var v=new Float32Array(t.data.subarray(k*T*D,k*T*D+D)),q=0;for(var i=0;i<D;i++) q+=v[i]*v[i];q=Math.sqrt(q)||1;for(i=0;i<D;i++) v[i]/=q;res.push(v);}
+            return res;
+          });
+        },embed:function(cv){
+          var c=document.createElement('canvas');c.width=S;c.height=S;
+          var g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(cv,0,0,S,S);
+          var px=g.getImageData(0,0,S,S).data,n=S*S,x=new Float32Array(3*n);
+          for(var i=0;i<n;i++){for(var ch=0;ch<3;ch++) x[ch*n+i]=(px[i*4+ch]/255-MEAN[ch])/STD[ch];}
+          var feed={};feed[sess.inputNames[0]]=new ort.Tensor('float32',x,[1,3,S,S]);
+          return sess.run(feed).then(function(out){
+            var t=out[sess.outputNames[0]],D=t.dims[t.dims.length-1],v=new Float32Array(t.data.subarray(0,D)),q=0;
+            for(var i=0;i<D;i++) q+=v[i]*v[i];
+            q=Math.sqrt(q)||1;for(i=0;i<D;i++) v[i]/=q;
+            return v;
+          });
         }};
       });
-    }));
+    });
+  }
+  function mediapipe(m){
+    return import(MP+'/vision_bundle.mjs').then(function(V){
+      return V.FilesetResolver.forVisionTasks(MP+'/wasm').then(function(fs){
+        return V.ImageEmbedder.createFromOptions(fs,{baseOptions:{modelAssetPath:m.model},l2Normalize:true,runningMode:'IMAGE'});
+      }).then(function(E){ return {embed:function(cv){ return Promise.resolve(E.embed(cv).embeddings[0].floatEmbedding); }}; });
+    });
   }
   var _p;
   function pca(){ return _p||(_p=manifest().then(function(m){return fetch(BASE+'pca.bin?v='+m.version).then(function(r){return r.arrayBuffer();}).then(function(b){var f=new Float32Array(b);var D=f.length/(m.dim+1);return {mean:f.subarray(0,D),W:f.subarray(D),D:D,d:m.dim};});})); }
   var _c={};
   function cat(k){ return _c[k]||(_c[k]=manifest().then(function(m){return Promise.all([fetch(BASE+k+'.json?v='+m.version).then(function(r){return r.json();}),fetch(BASE+k+'.bin?v='+m.version).then(function(r){return r.arrayBuffer();})]).then(function(x){return {meta:x[0],vec:new Int8Array(x[1])};});})); }
-  function warm(){ embedder().catch(function(){_e=null;}); pca().catch(function(){}); }
+  // the model is big (about 22 MB) and busy while it loads, so it starts only after a photo is picked, not when the window opens
+  function warm(){ pca().catch(function(){}); }
+  function seq(E,cvs){var V=[];return cvs.reduce(function(p,c){return p.then(function(){return E.embed(c).then(function(v){V.push(v);});});},Promise.resolve()).then(function(){return V;});}
+  // one model run at a time (the early analysis and a search can overlap)
+  var _q=Promise.resolve();
+  function serial(fn){var p=_q.then(fn,fn);_q=p.catch(function(){});return p;}
+  function embedAll(E,cvs){return serial(function(){return E.embedMany?E.embedMany(cvs).catch(function(){return seq(E,cvs);}):seq(E,cvs);});}
+  // query = the same crops the index was built with (manifest.crops): the piece wins over the brand box
+  function queryCrops(base,m){var CR=m.crops||[[1,.5,.5],[.75,.5,.5]],BW=base.width,BH=base.height;return CR.map(function(c){var cw=BW*c[0],ch=BH*c[0];return sub(base,(BW-cw)*c[1],(BH-ch)*c[2],cw,ch);});}
+  // start analysing the whole photo as soon as it is picked, while the shopper picks the category
+  function precompute(){var g=st.gen,img=st.img;st.pre=Promise.all([embedder(),manifest()]).then(function(a){if(g!==st.gen) throw new Error('stale');return embedAll(a[0],queryCrops(img,a[1]));});st.pre.catch(function(){});}
 
   function loadImage(file){
     var img=new Image(),url=URL.createObjectURL(file);
@@ -128,13 +170,16 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
       st.img=cv;st.sel=null;ov.querySelector('.jvs-stage').style.display='block';ov.querySelector('.jvs-croptip').style.display='block';
       drawSel();ov.querySelector('.jvs-res').innerHTML='';msg('');updateGo();
+      st.gen=(st.gen||0)+1;st.pre=null;
+      var h=ov.querySelector('.jvs-hint');h.classList.add('on');clearTimeout(st.ht);st.ht=setTimeout(function(){h.classList.remove('on');},2200);
+      setTimeout(precompute,300);
     };
     img.src=url;
   }
   function setupCrop(){
     var stage=ov.querySelector('.jvs-stage'),start=null;
     function pt(e){var r=st.img.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};}
-    stage.addEventListener('pointerdown',function(e){if(!st.img)return;start=pt(e);stage.setPointerCapture(e.pointerId);});
+    stage.addEventListener('pointerdown',function(e){if(!st.img)return;ov.querySelector('.jvs-hint').classList.remove('on');start=pt(e);stage.setPointerCapture(e.pointerId);});
     stage.addEventListener('pointermove',function(e){if(!start)return;var p=pt(e);st.sel={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(p.x-start.x),h:Math.abs(p.y-start.y)};drawSel();});
     stage.addEventListener('pointercancel',function(){start=null;});
     stage.addEventListener('pointerup',function(){start=null;if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;}drawSel();});
@@ -151,16 +196,13 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     var go=ov.querySelector('.jvs-go');go.disabled=true;msg('جاري البحث…');ov.querySelector('.jvs-res').innerHTML='';
     var cv=st.img,W=cv.width,H=cv.height,r=st.sel||{x:0,y:0,w:1,h:1};
     var base=sub(cv,r.x*W,r.y*H,r.w*W,r.h*H);
-    var BW=base.width,BH=base.height,CR=(_mf&&_mf.crops)||[[1,.5,.5],[.75,.5,.5]];
-    var qs=CR.map(function(c){var cw=BW*c[0],ch=BH*c[0];return sub(base,(BW-cw)*c[1],(BH-ch)*c[2],cw,ch);});
-    if(!st.ready) msg('أول مرة: جاري تجهيز أداة البحث (حوالي ٢٥ ميقا)…');
-    Promise.all([embedder(),pca(),cat(st.cat)]).then(function(a){
-      msg('جاري البحث…');
-      var E=a[0],P=a[1],C=a[2],d=P.d,D=P.D;
-      var vs=[];return qs.reduce(function(pr,c){return pr.then(function(){return E.embed(c).then(function(v){vs.push(v);});});},Promise.resolve()).then(function(){return [vs,P,C,d,D];});
-    }).then(function(z){
-      var P=z[1],C=z[2],d=z[3],D=z[4];
-      var Q=z[0].map(function(v){
+    var early=!st.sel&&st.pre;
+    Promise.all([embedder(),pca(),cat(st.cat),manifest()]).then(function(a){
+      var fresh=function(){return embedAll(a[0],queryCrops(base,a[3]));};
+      return (early?early.catch(fresh):fresh()).then(function(V){return [V,a[1],a[2]];});
+    }).then(function(a){
+      var P=a[1],C=a[2],d=P.d,D=P.D;
+      var Q=a[0].map(function(v){
         var o=new Float32Array(d),n=0;
         for(var j=0;j<d;j++){var s=0;for(var i=0;i<D;i++) s+=(v[i]-P.mean[i])*P.W[i*d+j];o[j]=s;n+=s*s;}
         n=Math.sqrt(n)||1;for(j=0;j<d;j++) o[j]/=n;return o;
@@ -185,7 +227,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       });
       box.innerHTML=html;msg(html?'':'ما لقينا نتائج، جرّب صورة أوضح أو قسم ثاني');
       if(html) box.scrollIntoView({behavior:'smooth',block:'start'});
-    }).catch(function(e){console.error(e);msg(e&&e.message==='index-updating'?'البحث بالصورة يتحدث الحين، جرّب بعد شوي':'صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
+    }).catch(function(e){console.error(e);msg('صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
   }
 
   function init(){ var n=0;(function t(){ addFieldButtons(); if(!addButton()&&n++<40) setTimeout(t,250); })(); var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimationFrame(function(){pend=0;addFieldButtons();});}).observe(document.body,{childList:true,subtree:true}); }
