@@ -1,0 +1,44 @@
+name: Build visual-search index
+on:
+  schedule:
+    - cron: "17 23 * * *"   # daily 02:17 Riyadh
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["build_index.py", ".github/workflows/build.yml"]
+permissions:
+  contents: write
+concurrency: build-index
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install mediapipe numpy pillow requests
+      - uses: actions/cache/restore@v4
+        with:
+          path: cache
+          key: emb-${{ github.run_id }}
+          restore-keys: emb-
+      - run: python build_index.py
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: cache
+          key: emb-${{ github.run_id }}
+      - name: Publish to data branch
+        run: |
+          cd out
+          git init -q -b data
+          git config user.name "index-bot"
+          git config user.email "index-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "index $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data
+      - name: Purge CDN cache
+        run: |
+          for f in out/*; do curl -s -o /dev/null "https://purge.jsdelivr.net/gh/${{ github.repository }}@data/$(basename $f)"; done
