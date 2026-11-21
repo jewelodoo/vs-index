@@ -1,0 +1,21 @@
+name: Full-protocol model test
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["eval/full_compare.py", ".github/workflows/full.yml"]
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        cat: [bracelets, necklaces, earrings, rings]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install onnxruntime numpy pillow requests
+      - run: python eval/full_compare.py ${{ matrix.cat }}
