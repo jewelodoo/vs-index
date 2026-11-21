@@ -1,0 +1,194 @@
+{%- comment -%}
+  Jewel: البحث بالصورة (Visual search).
+  Index is rebuilt daily by GitHub Actions (jewelodoo/vs-index, branch data).
+  Model runs in the shopper's browser (DINOv2-small int8 ONNX via onnxruntime-web).
+{%- endcomment -%}
+<style>
+.jvs-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:none;border:0;padding:0;color:currentColor;cursor:pointer}
+.jvs-btn svg{width:23px;height:23px}
+.jvs-in svg{width:20px;height:20px}
+.jvs-ov{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);display:none}
+.jvs-ov.open{display:block}
+html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
+.jvs-sh{position:absolute;inset:auto 0 0 0;max-height:92vh;max-height:88dvh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:#fff;color:#111;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));direction:rtl;font-family:var(--font-body-family);box-sizing:border-box}
+@media (min-width:750px){.jvs-sh{inset:5vh auto auto 50%;transform:translateX(-50%);width:min(760px,94vw);border-radius:16px;max-height:90vh}}
+.jvs-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.jvs-hd b{font-size:17px}
+.jvs-x{background:none;border:0;font-size:26px;line-height:1;cursor:pointer;color:#111}
+.jvs-cats{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.jvs-cats button{border:1px solid #ddd;background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;color:#111}
+.jvs-cats button.on{background:#111;color:#fff;border-color:#111}
+.jvs-pick{display:flex;gap:10px;margin-bottom:12px}
+.jvs-pick label{flex:1;text-align:center;border:1px dashed #aaa;border-radius:12px;padding:12px 4px;cursor:pointer;font-size:13px;white-space:nowrap}
+@media (max-width:749px){.jvs-sh{bottom:var(--jvs-b,0px)!important}}.jvs-ov[style*="--jvs-b"] .jvs-sh{border-radius:16px}
+.jvs-pick input{display:none}
+.jvs-stage{position:relative;display:none;width:fit-content;margin:0 auto 10px;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;overflow:hidden;border-radius:10px}
+.jvs-stage canvas{display:block;max-width:100%;max-height:30vh;max-height:30dvh;width:auto;height:auto;border-radius:10px}
+@media (min-width:750px){.jvs-stage canvas{max-height:45vh}}
+.jvs-sel{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.35);border-radius:6px;pointer-events:none}
+.jvs-tip{font-size:13px;color:#666;margin:4px 0 10px;text-align:center}
+.jvs-go{display:none;position:sticky;bottom:0;z-index:2;box-shadow:0 8px 0 8px #fff;width:100%;background:#111;color:#fff;border:0;border-radius:10px;padding:13px;font:inherit;font-size:15px;cursor:pointer}
+.jvs-go[disabled]{opacity:.5}
+.jvs-msg{text-align:center;font-size:14px;color:#444;margin:12px 0}
+.jvs-res{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
+@media (min-width:750px){.jvs-res{grid-template-columns:repeat(4,1fr)}}
+.jvs-res a{color:inherit;text-decoration:none;font-size:13px;line-height:1.4}
+.jvs-res img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#f4f4f4;display:block;margin-bottom:6px}
+.jvs-res .p{font-weight:600;margin-top:2px}
+</style>
+<script>
+(function(){
+  var BASE='https://cdn.jsdelivr.net/gh/jewelodoo/vs-index@data/';
+  var ORT='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
+  var MEAN=[0.485,0.456,0.406],STD=[0.229,0.224,0.225];
+  var TOP=24, ov, st={};
+  var CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.3-2h7l1.3 2h1.7A2.5 2.5 0 0 1 21 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="3.8"/></svg>';
+
+  function addButton(){
+    if(!window.matchMedia('(min-width:750px)').matches) return true;
+    var right=document.querySelector('header.header .header__right');
+    if(!right||right.querySelector('.jvs-btn')) return !!right;
+    var b=document.createElement('button');
+    b.type='button';b.className='jvs-btn header__icon';b.setAttribute('aria-label','ابحث بالصورة');b.innerHTML=CAM;
+    b.addEventListener('click',open);
+    var s=right.querySelector('search-modal');
+    if(s&&s.nextSibling) right.insertBefore(b,s.nextSibling); else right.insertBefore(b,right.firstChild);
+    return true;
+  }
+  function addFieldButtons(){
+    document.querySelectorAll('form.search .field').forEach(function(f){
+      if(f.querySelector('.jvs-in')) return;
+      var b=document.createElement('button');
+      b.type='button';b.className='search__button jvs-in focus-inset';b.setAttribute('aria-label','ابحث بالصورة');b.innerHTML=CAM;
+      b.addEventListener('click',function(e){e.preventDefault();open();});
+      var v=f.querySelector('voice-search-button');
+      if(v&&v.nextSibling) f.insertBefore(b,v.nextSibling); else f.appendChild(b);
+    });
+  }
+
+  function el(h){var d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;}
+  function build(){
+    ov=el('<div class="jvs-ov" role="dialog" aria-modal="true" aria-label="ابحث بالصورة"><div class="jvs-sh">'+
+      '<div class="jvs-hd"><b>ابحث بالصورة</b><button class="jvs-x" aria-label="إغلاق">&times;</button></div>'+
+      '<div class="jvs-tip" style="text-align:right;margin:0">وش نوع القطعة؟</div><div class="jvs-cats"></div>'+
+      '<div class="jvs-pick"><label>📷 صوّر القطعة بالكاميرا<input type="file" accept="image/*" capture="environment"></label><label>🖼️ اختر من الصور<input type="file" accept="image/*"></label></div>'+
+      '<div class="jvs-stage"><canvas></canvas><div class="jvs-sel"></div></div>'+
+      '<div class="jvs-tip jvs-croptip" style="display:none">اسحب بإصبعك حول القطعة عشان نتيجة أدق</div>'+
+      '<button class="jvs-go">ابحث</button><div class="jvs-msg"></div><div class="jvs-res"></div></div></div>');
+    document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){if(e.target===ov) close();});
+    ov.querySelector('.jvs-x').addEventListener('click',close);
+    ov.querySelectorAll('.jvs-pick input').forEach(function(i){i.addEventListener('change',function(){if(i.files[0]) loadImage(i.files[0]); i.value='';});});
+    ov.querySelector('.jvs-go').addEventListener('click',search);
+    setupCrop();
+    manifest().then(function(m){
+      var c=ov.querySelector('.jvs-cats');
+      m.cats.forEach(function(k){var b=document.createElement('button');b.type='button';b.textContent=k.label;b.dataset.k=k.key;
+        b.addEventListener('click',function(){st.cat=k.key;c.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});updateGo();});c.appendChild(b);});
+    }).catch(function(){msg('البحث بالصورة غير متاح حالياً');});
+  }
+  function open(){ if(!ov) build(); ov.classList.add('open'); var pb=document.getElementById('PBarNextFrameWrapper'); if(pb&&!window.matchMedia('(min-width:750px)').matches) ov.style.setProperty('--jvs-b',pb.getBoundingClientRect().height+'px'); document.documentElement.classList.add('jvs-lock'); warm(); }
+  function close(){ ov.classList.remove('open'); document.documentElement.classList.remove('jvs-lock'); }
+  function msg(t){ ov.querySelector('.jvs-msg').textContent=t||''; }
+  function updateGo(){ var g=ov.querySelector('.jvs-go'); g.style.display=st.img?'block':'none'; g.disabled=!(st.img&&st.cat); g.textContent=st.cat?'ابحث':'اختر نوع القطعة أول'; }
+
+  var _m;
+  var _mf;
+  function manifest(){ return _m||(_m=fetch(BASE+'manifest.json?h='+new Date().toISOString().slice(0,13)).then(function(r){if(!r.ok) throw 0; return r.json();}).then(function(m){_mf=m;return m;})); }
+  var _e;
+  function embedder(){
+    return _e||(_e=Promise.all([import(ORT+'ort.wasm.min.mjs'),manifest()]).then(function(a){
+      var ort=a[0],m=a[1];
+      if(m.arch!=='dinov2-small') throw new Error('index-updating');
+      ort.env.wasm.wasmPaths=ORT; ort.env.wasm.numThreads=1;
+      return ort.InferenceSession.create(m.model,{executionProviders:['wasm']}).then(function(sess){
+        st.ready=true;
+        var S=m.size||224;
+        return {embed:function(c){
+          var t=document.createElement('canvas');t.width=S;t.height=S;var g=t.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(c,0,0,S,S);
+          var px=g.getImageData(0,0,S,S).data,N=S*S,x=new Float32Array(3*N);
+          for(var i=0;i<N;i++){for(var ch=0;ch<3;ch++) x[ch*N+i]=(px[i*4+ch]/255-MEAN[ch])/STD[ch];}
+          var feeds={};feeds[sess.inputNames[0]]=new ort.Tensor('float32',x,[1,3,S,S]);
+          return sess.run(feeds).then(function(o){var d=o[sess.outputNames[0]].data,dim=o[sess.outputNames[0]].dims[2],v=new Float32Array(dim),n=0;for(var k=0;k<dim;k++){v[k]=d[k];n+=d[k]*d[k];}n=Math.sqrt(n)||1;for(k=0;k<dim;k++)v[k]/=n;return v;});
+        }};
+      });
+    }));
+  }
+  var _p;
+  function pca(){ return _p||(_p=manifest().then(function(m){return fetch(BASE+'pca.bin?v='+m.version).then(function(r){return r.arrayBuffer();}).then(function(b){var f=new Float32Array(b);var D=f.length/(m.dim+1);return {mean:f.subarray(0,D),W:f.subarray(D),D:D,d:m.dim};});})); }
+  var _c={};
+  function cat(k){ return _c[k]||(_c[k]=manifest().then(function(m){return Promise.all([fetch(BASE+k+'.json?v='+m.version).then(function(r){return r.json();}),fetch(BASE+k+'.bin?v='+m.version).then(function(r){return r.arrayBuffer();})]).then(function(x){return {meta:x[0],vec:new Int8Array(x[1])};});})); }
+  function warm(){ embedder().catch(function(){_e=null;}); pca().catch(function(){}); }
+
+  function loadImage(file){
+    var img=new Image(),url=URL.createObjectURL(file);
+    img.onload=function(){
+      var max=900,s=Math.min(1,max/Math.max(img.width,img.height));
+      var cv=ov.querySelector('.jvs-stage canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+      st.img=cv;st.sel=null;ov.querySelector('.jvs-stage').style.display='block';ov.querySelector('.jvs-croptip').style.display='block';
+      drawSel();ov.querySelector('.jvs-res').innerHTML='';msg('');updateGo();
+    };
+    img.src=url;
+  }
+  function setupCrop(){
+    var stage=ov.querySelector('.jvs-stage'),start=null;
+    function pt(e){var r=st.img.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};}
+    stage.addEventListener('pointerdown',function(e){if(!st.img)return;start=pt(e);stage.setPointerCapture(e.pointerId);});
+    stage.addEventListener('pointermove',function(e){if(!start)return;var p=pt(e);st.sel={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(p.x-start.x),h:Math.abs(p.y-start.y)};drawSel();});
+    stage.addEventListener('pointercancel',function(){start=null;});
+    stage.addEventListener('pointerup',function(){start=null;if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;}drawSel();});
+  }
+  function drawSel(){
+    var s=ov.querySelector('.jvs-sel'),r=st.sel;
+    if(!r){s.style.display='none';return;}
+    s.style.display='block';s.style.left=(r.x*100)+'%';s.style.top=(r.y*100)+'%';s.style.width=(r.w*100)+'%';s.style.height=(r.h*100)+'%';
+  }
+  function sub(cv,x,y,w,h){var c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext('2d').drawImage(cv,x,y,w,h,0,0,c.width,c.height);return c;}
+
+  function search(){
+    if(!st.img||!st.cat) return;
+    var go=ov.querySelector('.jvs-go');go.disabled=true;msg('جاري البحث…');ov.querySelector('.jvs-res').innerHTML='';
+    var cv=st.img,W=cv.width,H=cv.height,r=st.sel||{x:0,y:0,w:1,h:1};
+    var base=sub(cv,r.x*W,r.y*H,r.w*W,r.h*H);
+    var BW=base.width,BH=base.height,CR=(_mf&&_mf.crops)||[[1,.5,.5],[.75,.5,.5]];
+    var qs=CR.map(function(c){var cw=BW*c[0],ch=BH*c[0];return sub(base,(BW-cw)*c[1],(BH-ch)*c[2],cw,ch);});
+    if(!st.ready) msg('أول مرة: جاري تجهيز أداة البحث (حوالي ٢٥ ميقا)…');
+    Promise.all([embedder(),pca(),cat(st.cat)]).then(function(a){
+      msg('جاري البحث…');
+      var E=a[0],P=a[1],C=a[2],d=P.d,D=P.D;
+      var vs=[];return qs.reduce(function(pr,c){return pr.then(function(){return E.embed(c).then(function(v){vs.push(v);});});},Promise.resolve()).then(function(){return [vs,P,C,d,D];});
+    }).then(function(z){
+      var P=z[1],C=z[2],d=z[3],D=z[4];
+      var Q=z[0].map(function(v){
+        var o=new Float32Array(d),n=0;
+        for(var j=0;j<d;j++){var s=0;for(var i=0;i<D;i++) s+=(v[i]-P.mean[i])*P.W[i*d+j];o[j]=s;n+=s*s;}
+        n=Math.sqrt(n)||1;for(j=0;j<d;j++) o[j]/=n;return o;
+      });
+      var vec=C.vec,cnt=C.meta.counts,hs=C.meta.handles,best=new Float32Array(hs.length),k=0;
+      for(var p=0;p<hs.length;p++){
+        var b=-9;
+        for(var t=0;t<cnt[p];t++,k++){
+          var off=k*d;
+          for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=vec[off+j]*qq[j];if(s>b)b=s;}
+        }
+        best[p]=b;
+      }
+      var idx=Array.from(best.keys()).sort(function(x,y){return best[y]-best[x];}).slice(0,TOP);
+      return Promise.all(idx.map(function(i){return fetch('/products/'+hs[i]+'.js').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}));
+    }).then(function(ps){
+      var box=ov.querySelector('.jvs-res'),html='';
+      ps.forEach(function(p){
+        if(!p) return;
+        var img=p.featured_image?(p.featured_image+(p.featured_image.indexOf('?')>-1?'&':'?')+'width=360'):'';
+        html+='<a href="'+p.url+'"><img loading="lazy" src="'+img+'" alt=""><div>'+p.title.replace(/</g,'&lt;')+'</div><div class="p"><span class="money">SAR '+(p.price/100).toFixed(2)+'</span></div></a>';
+      });
+      box.innerHTML=html;msg(html?'':'ما لقينا نتائج، جرّب صورة أوضح أو قسم ثاني');
+      if(html) box.scrollIntoView({behavior:'smooth',block:'start'});
+    }).catch(function(e){console.error(e);msg(e&&e.message==='index-updating'?'البحث بالصورة يتحدث الحين، جرّب بعد شوي':'صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
+  }
+
+  function init(){ var n=0;(function t(){ addFieldButtons(); if(!addButton()&&n++<40) setTimeout(t,250); })(); var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimationFrame(function(){pend=0;addFieldButtons();});}).observe(document.body,{childList:true,subtree:true}); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
