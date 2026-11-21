@@ -15,4 +15,4 @@ jobs:
           python-version: "3.11"
       - run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2 libgl1
       - run: pip install mediapipe onnxruntime numpy pillow requests
-      - run: python eval/query_test.py
+      - run: python eval/photo_test.py
