@@ -17,7 +17,4 @@ jobs:
           python-version: "3.11"
       - run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2 libgl1
       - run: pip install mediapipe onnxruntime numpy pillow requests
-      - run: python eval/rerank_cands.py
-      - run: |
-          cd sheets && git init -q -b sheets && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm sheets
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" sheets
+      - run: python eval/one_test.py
