@@ -19,7 +19,9 @@ for (const [file, target, sel] of tests) {
   await page.setInputFiles('.jvs-pick label:nth-child(2) input', { name: file, mimeType: 'image/jpeg', buffer: buf });
   await page.waitForTimeout(400);
   const hint = await page.evaluate(() => { const h = document.querySelector('.jvs-hint'); return h && h.classList.contains('on'); });
-  await page.evaluate(() => [...document.querySelectorAll('.jvs-cats button')].find(x => x.textContent === 'حلق').click());
+  await page.waitForSelector('.jvs-cats button', { timeout: 30000 }).catch(() => {});
+  console.log('cats', await page.evaluate(() => [...document.querySelectorAll('.jvs-cats button')].map(x => x.textContent).join('|')));
+  await page.evaluate(() => [...document.querySelectorAll('.jvs-cats button')].find(x => x.textContent.trim() === 'حلق').click());
   if (sel) {
     const box = await page.locator('.jvs-stage canvas').boundingBox();
     await page.mouse.move(box.x + box.width * sel[0], box.y + box.height * sel[1]); await page.mouse.down();
