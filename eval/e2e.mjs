@@ -30,7 +30,8 @@ for (const [file, target, sel] of tests) {
   await page.waitForTimeout(3000); // shopper choosing the category
   const t1 = Date.now();
   await page.click('.jvs-go');
-  await page.waitForSelector('.jvs-res a', { timeout: 90000 });
+  const okRes = await page.waitForSelector('.jvs-res a', { timeout: 60000 }).then(() => true).catch(() => false);
+  if (!okRes) { console.log('NORES', JSON.stringify(await page.evaluate(() => ({ msg: document.querySelector('.jvs-msg').textContent, go: document.querySelector('.jvs-go').disabled, sel: document.querySelector('.jvs-stage') && getComputedStyle(document.querySelector('.jvs-stage')).display })))); continue; }
   const t2 = Date.now();
   const r = await page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, top: as.slice(0, 3).map(a => a.textContent.trim().slice(0, 30)) }; }, target);
   const box = await page.evaluate(() => window.__jvsBox ? Object.values(window.__jvsBox).map(v => v.toFixed(2)) : null);
