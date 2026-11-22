@@ -1,0 +1,35 @@
+name: Piece detection test
+on:
+  workflow_dispatch:
+  push:
+    paths: [eval/detect_test.py, .github/workflows/detect.yml]
+permissions:
+  contents: write
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      matrix: { i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q numpy pillow requests onnxruntime torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple transformers scipy
+      - run: python eval/detect_test.py shard ${{ matrix.i }} 12
+      - uses: actions/upload-artifact@v4
+        with: { name: "det-${{ matrix.i }}", path: "det_*.npz" }
+  eval:
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q numpy pillow requests onnxruntime torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple transformers scipy
+      - uses: actions/download-artifact@v4
+        with: { path: det }
+      - run: python eval/detect_test.py eval
+      - run: |
+          cd sheets && git init -q -b sheets && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm sheets
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" sheets
