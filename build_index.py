@@ -108,11 +108,13 @@ def main():
         return u, None
     done = 0
     with cf.ThreadPoolExecutor(12) as ex:
-        for u, im in ex.map(fetch, todo):
-            if im is None: continue
-            cache[ckey(u)] = embed(crops(pieces.piece(im, boxes.get(u)) if PIECES else im)).astype(np.float16); done += 1
-            if done % 500 == 0:
-                print("embedded", done); pickle.dump(cache, open(cpath, "wb"))
+        # in chunks: ex.map over everything downloads far ahead of the model and the photos fill the memory (lost the runner 22 Nov)
+        for c0 in range(0, len(todo), 48):
+            for u, im in ex.map(fetch, todo[c0:c0 + 48]):
+                if im is None: continue
+                cache[ckey(u)] = embed(crops(pieces.piece(im, boxes.get(u)) if PIECES else im)).astype(np.float16); done += 1
+                if done % 500 == 0:
+                    print("embedded", done, flush=True); pickle.dump(cache, open(cpath, "wb"))
     live = {ckey(u) for u in want}
     cache = {k: v for k, v in cache.items() if k in live}
     pickle.dump(cache, open(cpath, "wb"))

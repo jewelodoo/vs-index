@@ -32,7 +32,7 @@ def detector():
     from transformers import Owlv2Processor, Owlv2ForObjectDetection
     name = "google/owlv2-base-patch16-ensemble"
     proc = Owlv2Processor.from_pretrained(name); model = Owlv2ForObjectDetection.from_pretrained(name).eval()
-    torch.set_num_threads(os.cpu_count() or 2)
+    torch.set_num_threads(max(1, (os.cpu_count() or 2) - 1))
     def find(im, cat):
         q = QUERIES.get(cat, QUERIES["other"])
         with torch.no_grad():
@@ -70,6 +70,7 @@ def detect(todo, find=None, log_every=50):
         im = fetch(u)
         out[u] = find(im, cat) if im is not None else None
         if k % log_every == 0: print("boxes", k, len(todo), round(time.time() - t0), "s", flush=True)
+    del find; import gc; gc.collect()
     return out
 
 if __name__ == "__main__":
