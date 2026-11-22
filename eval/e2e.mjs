@@ -42,7 +42,11 @@ for (const [file, target, sel] of tests) {
     const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
     if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null) }; }
   }
-  console.log('E2E-AI', file, 'button=' + ai, JSON.stringify(aiRes));
+  const after = await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display);
+  await page.click('.jvs-go'); await page.waitForTimeout(6000);
+  const again = await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display);
+  const named = await page.evaluate(() => /claude|anthropic/i.test(document.documentElement.outerHTML));
+  console.log('E2E-AI', file, 'button=' + ai, 'after_press=' + after, 'after_new_search_same_photo=' + again, 'model_name_in_page=' + named, JSON.stringify(aiRes));
   await page.evaluate(() => document.querySelector('.jvs-x').click());
   await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(3000);
 }
