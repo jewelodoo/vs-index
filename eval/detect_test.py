@@ -30,7 +30,9 @@ def detector():
         with torch.no_grad():
             enc = proc(text=[QUERIES], images=im, return_tensors="pt"); out = model(**enc)
         side = max(im.size)  # OWLv2 pads to a square
-        res = proc.post_process_object_detection(out, threshold=0.05, target_sizes=torch.tensor([[side, side]]))[0]
+        ts = torch.tensor([[side, side]])
+        pp = getattr(proc, "post_process_grounded_object_detection", None)
+        res = (pp(outputs=out, threshold=0.05, target_sizes=ts) if pp else proc.image_processor.post_process_object_detection(out, threshold=0.05, target_sizes=ts))[0]
         if not len(res["scores"]): return None, 0.0
         k = int(res["scores"].argmax()); x0, y0, x1, y1 = res["boxes"][k].tolist(); w, h = im.size
         return (max(0, x0) / w, max(0, y0) / h, min(w, x1) / w, min(h, y1) / h), float(res["scores"][k])
