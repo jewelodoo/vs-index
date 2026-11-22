@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths: ["eval/**", ".github/workflows/eval.yml"]
+permissions:
+  contents: write
 jobs:
   eval:
     runs-on: ubuntu-latest
@@ -16,7 +18,6 @@ jobs:
       - run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2 libgl1
       - run: pip install mediapipe onnxruntime numpy pillow requests
       - run: python eval/rerank_cands.py
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sheets
-          path: sheets/
+      - run: |
+          cd sheets && git init -q -b sheets && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm sheets
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" sheets
