@@ -15,4 +15,8 @@ jobs:
           python-version: "3.11"
       - run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2 libgl1
       - run: pip install mediapipe onnxruntime numpy pillow requests
-      - run: python eval/index_autocrop_test.py
+      - run: python eval/rerank_cands.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sheets
+          path: sheets/
