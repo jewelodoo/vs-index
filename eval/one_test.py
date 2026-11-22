@@ -2,7 +2,7 @@
 import io, os, json, numpy as np, requests
 from PIL import Image
 exec(open("eval/photo_test.py").read().split("TESTS = [")[0])
-F, CAT, H = os.environ.get("PHOTO", "ch.jpg"), os.environ.get("CAT", "earrings"), os.environ.get("HANDLE", "product-4957")
+F, CAT, H = os.environ.get("PHOTO", "bv.jpg"), os.environ.get("CAT", "bracelets"), os.environ.get("HANDLE", "408879")
 meta = requests.get(RAW + f"data/{CAT}.json").json(); hs = meta["handles"]
 V = np.frombuffer(requests.get(RAW + f"data/{CAT}.bin").content, np.int8).reshape(-1, d).astype(np.float32) / 127
 owner = np.repeat(np.arange(len(meta["counts"])), meta["counts"])
