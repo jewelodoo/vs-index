@@ -3,7 +3,7 @@
 import { chromium, devices } from 'playwright';
 const URL0 = 'https://sa-jewel.com/?preview_theme_id=132002938938';
 const Q = 'https://raw.githubusercontent.com/jewelodoo/vs-index/queries/';
-const tests = [['dior_full.jpg', 'copy-of-443', null], ['dior_sel.jpg', 'copy-of-443', null], ['dior_full.jpg', 'copy-of-443', [0.12, 0.27, 0.9, 0.75]]];
+const tests = [['t/ch.jpg', 'product-4957', null], ['dior_full.jpg', 'copy-of-443', null]];
 const b = await chromium.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
@@ -41,7 +41,7 @@ for (const [file, target, sel] of tests) {
   if (ai) {
     const t3 = Date.now();
     const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
-    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null) }; }
+    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), rank: await page.evaluate(t => [...document.querySelectorAll('.jvs-res a')].findIndex(a => a.getAttribute('href').includes(t)) + 1, target), top: await page.evaluate(() => [...document.querySelectorAll('.jvs-res a')].slice(0, 3).map(a => a.textContent.trim().slice(0, 30))) }; }
   }
   const after = await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display);
   await page.click('.jvs-go'); await page.waitForTimeout(6000);
