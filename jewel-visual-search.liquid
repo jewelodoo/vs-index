@@ -36,6 +36,10 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-res a{color:inherit;text-decoration:none;font-size:13px;line-height:1.4}
 .jvs-res img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#f4f4f4;display:block;margin-bottom:6px}
 .jvs-res .p{font-weight:600;margin-top:2px}
+.jvs-ai{display:none;width:100%;margin-top:14px;background:#fff;color:#111;border:1.5px solid #111;border-radius:10px;padding:12px;font:inherit;font-size:14px;cursor:pointer}
+.jvs-ai[disabled]{opacity:.5}
+.jvs-res .x{position:relative}
+.jvs-res .x:after{content:"نفس القطعة";position:absolute;top:6px;right:6px;background:#111;color:#fff;font-size:11px;padding:2px 7px;border-radius:20px}
 .jvs-hint{position:absolute;inset:0;pointer-events:none;background:rgba(0,0,0,.28);color:#fff;opacity:0;transition:opacity .3s}
 .jvs-hint.on{opacity:1}
 .jvs-hint i{position:absolute;border:2px dashed #fff;border-radius:6px;animation:jvsBox 1.4s ease-in-out infinite}
@@ -82,12 +86,12 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       '<div class="jvs-pick"><label>📷 صوّر القطعة بالكاميرا<input type="file" accept="image/*" capture="environment"></label><label>🖼️ اختر من الصور<input type="file" accept="image/*"></label></div>'+
       '<div class="jvs-stage"><canvas></canvas><div class="jvs-sel"></div><div class="jvs-hint"><i></i><b>👆</b><span>اسحب حول القطعة لنتيجة أدق</span></div></div>'+
       '<div class="jvs-tip jvs-croptip" style="display:none">اسحب بإصبعك حول القطعة عشان نتيجة أدق</div>'+
-      '<button class="jvs-go">ابحث</button><div class="jvs-msg"></div><div class="jvs-res"></div></div></div>');
+      '<button class="jvs-go">ابحث</button><div class="jvs-msg"></div><div class="jvs-res"></div><button type="button" class="jvs-ai">ما لقيتي القطعة؟ خلّي الذكاء يدقق 🔍</button></div></div>');
     document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov) close();});
     ov.querySelector('.jvs-x').addEventListener('click',close);
     ov.querySelectorAll('.jvs-pick input').forEach(function(i){i.addEventListener('change',function(){if(i.files[0]) loadImage(i.files[0]); i.value='';});});
-    ov.querySelector('.jvs-go').addEventListener('click',search);
+    ov.querySelector('.jvs-go').addEventListener('click',search);ov.querySelector('.jvs-ai').addEventListener('click',second);
     setupCrop();
     manifest().then(function(m){
       var c=ov.querySelector('.jvs-cats');
@@ -198,7 +202,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       var cv=ov.querySelector('.jvs-stage canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
       cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
       st.img=cv;st.sel=null;ov.querySelector('.jvs-stage').style.display='block';ov.querySelector('.jvs-croptip').style.display='block';
-      drawSel();ov.querySelector('.jvs-res').innerHTML='';msg('');updateGo();
+      drawSel();ov.querySelector('.jvs-res').innerHTML='';ov.querySelector('.jvs-ai').style.display='none';msg('');updateGo();
       st.gen=(st.gen||0)+1;st.pre=null;
       var h=ov.querySelector('.jvs-hint');h.classList.add('on');clearTimeout(st.ht);st.ht=setTimeout(function(){h.classList.remove('on');},2200);
       setTimeout(precompute,300);
@@ -222,9 +226,9 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 
   function search(){
     if(!st.img||!st.cat) return;
-    var go=ov.querySelector('.jvs-go');go.disabled=true;msg('جاري البحث…');ov.querySelector('.jvs-res').innerHTML='';
+    var go=ov.querySelector('.jvs-go');go.disabled=true;msg('جاري البحث…');ov.querySelector('.jvs-res').innerHTML='';ov.querySelector('.jvs-ai').style.display='none';
     var cv=st.img,W=cv.width,H=cv.height,r=st.sel||{x:0,y:0,w:1,h:1};
-    var base=sub(cv,r.x*W,r.y*H,r.w*W,r.h*H);
+    var base=sub(cv,r.x*W,r.y*H,r.w*W,r.h*H);st.q=base;
     var early=!st.sel&&st.pre;
     Promise.all([embedder(),pca(),cat(st.cat),manifest()]).then(function(a){
       var fresh=function(){return analyse(a[0],a[3],base,!st.sel);};
@@ -245,18 +249,37 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
         }
         best[p]=b;
       }
-      var idx=Array.from(best.keys()).sort(function(x,y){return best[y]-best[x];}).slice(0,TOP);
-      return Promise.all(idx.map(function(i){return fetch('/products/'+hs[i]+'.js').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}));
-    }).then(function(ps){
+      var idx=Array.from(best.keys()).sort(function(x,y){return best[y]-best[x];});
+      st.rank=idx.map(function(i){return hs[i];});
+      return show(st.rank.slice(0,TOP),null);
+    }).then(function(n){ if(n&&AI) ov.querySelector('.jvs-ai').style.display='block'; })
+    .catch(function(e){console.error(e);msg('صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
+  }
+  function show(list,exact){
+    return Promise.all(list.map(function(h){return fetch('/products/'+h+'.js').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});})).then(function(ps){
       var box=ov.querySelector('.jvs-res'),html='';
-      ps.forEach(function(p){
+      ps.forEach(function(p,i){
         if(!p) return;
         var img=p.featured_image?(p.featured_image+(p.featured_image.indexOf('?')>-1?'&':'?')+'width=360'):'';
-        html+='<a href="'+p.url+'"><img loading="lazy" src="'+img+'" alt=""><div>'+p.title.replace(/</g,'&lt;')+'</div><div class="p"><span class="money">SAR '+(p.price/100).toFixed(2)+'</span></div></a>';
+        html+='<a href="'+p.url+'"'+(exact&&list[i]===exact?' class="x"':'')+'><img loading="lazy" src="'+img+'" alt=""><div>'+p.title.replace(/</g,'&lt;')+'</div><div class="p"><span class="money">SAR '+(p.price/100).toFixed(2)+'</span></div></a>';
       });
       box.innerHTML=html;msg(html?'':'ما لقينا نتائج، جرّب صورة أوضح أو قسم ثاني');
       if(html) box.scrollIntoView({behavior:'smooth',block:'start'});
-    }).catch(function(e){console.error(e);msg('صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
+      return html.length;
+    });
+  }
+  // Second look: Claude compares the photo with the closest products (jewel-app on Render, vsrerank.js).
+  var AI='https://jewel-app-ic3o.onrender.com/vs/rerank';
+  function second(){
+    if(!st.q||!st.rank) return;
+    var bt=ov.querySelector('.jvs-ai'),q=st.q,s=Math.min(1,768/Math.max(q.width,q.height)),c=document.createElement('canvas');
+    c.width=Math.round(q.width*s);c.height=Math.round(q.height*s);c.getContext('2d').drawImage(q,0,0,c.width,c.height);
+    bt.disabled=true;msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');
+    fetch(AI,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({img:c.toDataURL('image/jpeg',.85),ids:st.rank})})
+      .then(function(r){return r.json();})
+      .then(function(j){ if(!j.ok) throw new Error(j.error); bt.style.display='none'; return show(j.ids.slice(0,TOP),j.exact); })
+      .catch(function(e){console.error(e);msg('ما قدرنا ندقق الحين، النتايج اللي فوق هي الأقرب');})
+      .then(function(){bt.disabled=false;});
   }
 
   function init(){ var n=0;(function t(){ addFieldButtons(); if(!addButton()&&n++<40) setTimeout(t,250); })(); var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimationFrame(function(){pend=0;addFieldButtons();});}).observe(document.body,{childList:true,subtree:true}); }
