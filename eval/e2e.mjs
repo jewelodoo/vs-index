@@ -3,7 +3,7 @@
 import { chromium, devices } from 'playwright';
 const URL0 = 'https://sa-jewel.com/?preview_theme_id=132002938938';
 const Q = 'https://raw.githubusercontent.com/jewelodoo/vs-index/queries/';
-const tests = [['t/bv.jpg', 'zzz', null, 'أساور']];
+const tests = [['t/bv.jpg', '408879', null, 'أساور'], ['t/ch.jpg', 'product-4957', null, 'حلق'], ['t/10.jpg', '408996', null, 'أساور']];
 const b = await chromium.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
