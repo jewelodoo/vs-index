@@ -33,6 +33,14 @@ for (const [file, target, sel] of tests) {
   const r = await page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, top: as.slice(0, 3).map(a => a.textContent.trim().slice(0, 30)) }; }, target);
   const box = await page.evaluate(() => window.__jvsBox ? Object.values(window.__jvsBox).map(v => v.toFixed(2)) : null);
   console.log('E2E', file, 'box=' + JSON.stringify(box), sel ? 'selected' : 'whole', 'hint=' + hint, 'wait_after_click_ms=' + (t2 - t1), 'from_pick_ms=' + (t2 - t0), JSON.stringify(r));
+  const ai = await page.evaluate(() => { const b = document.querySelector('.jvs-ai'); return b && getComputedStyle(b).display !== 'none'; });
+  let aiRes = null;
+  if (ai) {
+    const t3 = Date.now();
+    const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
+    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null) }; }
+  }
+  console.log('E2E-AI', file, 'button=' + ai, JSON.stringify(aiRes));
   await page.evaluate(() => document.querySelector('.jvs-x').click());
   await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(3000);
 }
