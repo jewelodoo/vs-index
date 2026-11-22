@@ -255,8 +255,9 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     }).then(function(n){ if(n&&AI&&!st.ai) ov.querySelector('.jvs-ai').style.display='block'; })
     .catch(function(e){console.error(e);msg('صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
   }
+  var PC={}; // product details already fetched (the store limits repeated requests)
   function show(list,exact){
-    return Promise.all(list.map(function(h){return fetch('/products/'+h+'.js').then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});})).then(function(ps){
+    return Promise.all(list.map(function(h){return PC[h]||(PC[h]=fetch('/products/'+h+'.js').then(function(r){if(!r.ok){delete PC[h];return null;}return r.json();}).catch(function(){delete PC[h];return null;}));})).then(function(ps){
       var box=ov.querySelector('.jvs-res'),html='';
       ps.forEach(function(p,i){
         if(!p) return;
@@ -277,7 +278,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     bt.disabled=true;bt.style.display='none';msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');
     fetch(AI,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({img:c.toDataURL('image/jpeg',.85),ids:st.rank})})
       .then(function(r){return r.json();})
-      .then(function(j){ if(!j.ok) throw new Error(j.error); return show(j.ids.slice(0,TOP),j.exact); })
+      .then(function(j){ if(!j.ok) throw new Error(j.error); window.__jvsAi=j.info; return show(j.ids.slice(0,TOP),j.exact); })
       .catch(function(e){console.error(e);msg('ما قدرنا ندقق الحين، النتايج اللي فوق هي الأقرب');})
       .then(function(){bt.disabled=false;});
   }
