@@ -1,0 +1,44 @@
+name: Piece boxes (OWLv2)
+# Finds the jewel in every product photo that has no box yet, 20 parts at once, then rebuilds the index.
+# The daily build detects new photos itself (up to DETECT_MAX); run this by hand for a big batch.
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency: piece-boxes
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix: { i: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q numpy pillow requests onnxruntime torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple transformers scipy
+      - run: python pieces.py shard ${{ matrix.i }} 20
+      - uses: actions/upload-artifact@v4
+        with: { name: "boxes-${{ matrix.i }}", path: "boxes_*.json" }
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q numpy pillow requests onnxruntime
+      - uses: actions/download-artifact@v4
+        with: { path: parts, pattern: "boxes-*" }
+      - run: python pieces.py merge
+      - name: Publish to boxes branch
+        run: |
+          cd out_boxes && git init -q -b boxes && git add -A
+          git -c user.name=index-bot -c user.email=index-bot@users.noreply.github.com commit -q -m "boxes $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" boxes
+      - name: Rebuild the index with the pieces
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: gh workflow run build.yml -R ${{ github.repository }}

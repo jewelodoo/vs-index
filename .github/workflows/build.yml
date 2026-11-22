@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["build_index.py", "neighbors.py", "eval/groups.json", ".github/workflows/build.yml"]
+    paths: ["build_index.py", "pieces.py", "neighbors.py", "eval/groups.json", ".github/workflows/build.yml"]
 permissions:
   contents: write
 concurrency: build-index
@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install onnxruntime numpy pillow requests
+      - run: pip install onnxruntime numpy pillow requests torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple transformers scipy
       - uses: actions/cache/restore@v4
         with:
           path: cache
@@ -39,6 +39,12 @@ jobs:
           git add -A
           git commit -q -m "index $(date -u +%F)"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data
+      - name: Publish new piece boxes
+        if: hashFiles('out_boxes/boxes.json') != ''
+        run: |
+          cd out_boxes && git init -q -b boxes && git add -A
+          git -c user.name=index-bot -c user.email=index-bot@users.noreply.github.com commit -q -m "boxes $(date -u +%F)"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" boxes
       - name: Purge CDN cache
         run: |
           for f in out/*; do curl -s -o /dev/null "https://purge.jsdelivr.net/gh/${{ github.repository }}@data/$(basename $f)"; done
