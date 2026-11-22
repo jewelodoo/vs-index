@@ -25,6 +25,8 @@ jobs:
           key: emb-${{ github.run_id }}
           restore-keys: emb-
       - run: python build_index.py
+        env:
+          PIECES: "0"   # 22 Nov: the piece-only index lost on the 13 shopper photos (top1 7/13 vs 9/13); boxes stay in the boxes branch
       - uses: actions/cache/save@v4
         if: always()
         with:
