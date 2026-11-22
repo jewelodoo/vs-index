@@ -6,11 +6,15 @@ exec(open("eval/photo_test.py").read().split("TESTS = [")[0])  # model, pca, tit
 imgs = {}
 page = 1
 while True:
-    ps = requests.get(f"https://sa-jewel.com/products.json?limit=250&page={page}", headers={"User-Agent": "jewel-vs-test"}).json()["products"]
+    for _ in range(8):
+        r = requests.get(f"https://sa-jewel.com/products.json?limit=250&page={page}", headers={"User-Agent": "jewel-vs-test"})
+        if r.ok and r.text.startswith("{"): break
+        time.sleep(15)
+    ps = r.json()["products"]
     if not ps: break
     for p in ps:
         if p.get("images"): imgs[p["handle"]] = p["images"][0]["src"]
-    page += 1; time.sleep(.3)
+    page += 1; time.sleep(1)
 TESTS = [("1.jpg","necklaces",r"دورين 707","دورين"),("2.jpg","bracelets",r"كارتير","كارتير"),("3.jpg","bracelets",r"بولغاري.*خيط|خيط.*بولغاري","بولغاري"),
  ("4.jpg","rings",r"توري","توري"),("5.jpg","earrings",r"سي اتش|كارولينا","كارولينا|سي اتش"),("6.jpg","bracelets",r"فان كليف","فان كليف"),
  ("7.jpg","necklaces",r"سواروفسكي.*ملون","سواروفسكي"),("8.jpg","bracelets",r"فندي زركون بيق لوقو","فندي"),("9.jpg","bracelets",r"لويس فيتون.*سمبل","لويس فيتون"),
