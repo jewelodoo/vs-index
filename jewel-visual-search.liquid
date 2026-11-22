@@ -202,7 +202,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       var cv=ov.querySelector('.jvs-stage canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
       cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
       st.img=cv;st.sel=null;ov.querySelector('.jvs-stage').style.display='block';ov.querySelector('.jvs-croptip').style.display='block';
-      drawSel();ov.querySelector('.jvs-res').innerHTML='';ov.querySelector('.jvs-ai').style.display='none';msg('');updateGo();
+      drawSel();ov.querySelector('.jvs-res').innerHTML='';ov.querySelector('.jvs-ai').style.display='none';st.ai=0;msg('');updateGo();
       st.gen=(st.gen||0)+1;st.pre=null;
       var h=ov.querySelector('.jvs-hint');h.classList.add('on');clearTimeout(st.ht);st.ht=setTimeout(function(){h.classList.remove('on');},2200);
       setTimeout(precompute,300);
@@ -252,7 +252,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       var idx=Array.from(best.keys()).sort(function(x,y){return best[y]-best[x];});
       st.rank=idx.map(function(i){return hs[i];});
       return show(st.rank.slice(0,TOP),null);
-    }).then(function(n){ if(n&&AI) ov.querySelector('.jvs-ai').style.display='block'; })
+    }).then(function(n){ if(n&&AI&&!st.ai) ov.querySelector('.jvs-ai').style.display='block'; })
     .catch(function(e){console.error(e);msg('صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
   }
   function show(list,exact){
@@ -268,16 +268,16 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       return html.length;
     });
   }
-  // Second look: Claude compares the photo with the closest products (jewel-app on Render, vsrerank.js).
+  // Second look (jewel-app, vsrerank.js). One press per photo.
   var AI='https://jewel-app-ic3o.onrender.com/vs/rerank';
   function second(){
-    if(!st.q||!st.rank) return;
+    if(!st.q||!st.rank||st.ai) return; st.ai=1;
     var bt=ov.querySelector('.jvs-ai'),q=st.q,s=Math.min(1,768/Math.max(q.width,q.height)),c=document.createElement('canvas');
     c.width=Math.round(q.width*s);c.height=Math.round(q.height*s);c.getContext('2d').drawImage(q,0,0,c.width,c.height);
-    bt.disabled=true;msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');
+    bt.disabled=true;bt.style.display='none';msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');
     fetch(AI,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({img:c.toDataURL('image/jpeg',.85),ids:st.rank})})
       .then(function(r){return r.json();})
-      .then(function(j){ if(!j.ok) throw new Error(j.error); bt.style.display='none'; return show(j.ids.slice(0,TOP),j.exact); })
+      .then(function(j){ if(!j.ok) throw new Error(j.error); return show(j.ids.slice(0,TOP),j.exact); })
       .catch(function(e){console.error(e);msg('ما قدرنا ندقق الحين، النتايج اللي فوق هي الأقرب');})
       .then(function(){bt.disabled=false;});
   }
