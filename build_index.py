@@ -89,13 +89,13 @@ def main():
                 boxes.update(pieces.detect(missing)); os.makedirs("out_boxes", exist_ok=True)
                 json.dump(boxes, open("out_boxes/boxes.json", "w"), separators=(",", ":"))
             except Exception as e: print("detection skipped:", e)
-    def key(u):  # cache key: the photo, or the photo + where the piece is
+    def ckey(u):  # cache key: the photo, or the photo + where the piece is
         b = boxes.get(u)
         return f"{u}|{','.join(map(str, b[:4]))}" if PIECES and b else u
     cpath = CACHE_P if PIECES else CACHE
     cache = pickle.load(open(cpath, "rb")) if os.path.exists(cpath) else {}
     want = {u for p in allp.values() for u in img_urls(p)}
-    todo = sorted(u for u in want if key(u) not in cache)
+    todo = sorted(u for u in want if ckey(u) not in cache)
     print("new images", len(todo))
     def fetch(u):
         sep = "&" if "?" in u else "?"
@@ -110,13 +110,13 @@ def main():
     with cf.ThreadPoolExecutor(12) as ex:
         for u, im in ex.map(fetch, todo):
             if im is None: continue
-            cache[key(u)] = embed(crops(pieces.piece(im, boxes.get(u)) if PIECES else im)).astype(np.float16); done += 1
+            cache[ckey(u)] = embed(crops(pieces.piece(im, boxes.get(u)) if PIECES else im)).astype(np.float16); done += 1
             if done % 500 == 0:
                 print("embedded", done); pickle.dump(cache, open(cpath, "wb"))
-    live = {key(u) for u in want}
+    live = {ckey(u) for u in want}
     cache = {k: v for k, v in cache.items() if k in live}
     pickle.dump(cache, open(cpath, "wb"))
-    emb = lambda u: cache.get(key(u))
+    emb = lambda u: cache.get(ckey(u))
 
     X = np.concatenate([v for v in cache.values()]).astype(np.float32)
     rng = np.random.default_rng(0)
