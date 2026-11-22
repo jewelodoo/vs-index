@@ -3,7 +3,7 @@
 import { chromium, devices } from 'playwright';
 const URL0 = 'https://sa-jewel.com/?preview_theme_id=132002938938';
 const Q = 'https://raw.githubusercontent.com/jewelodoo/vs-index/queries/';
-const tests = [['t/ch.jpg', 'product-4957', null, 'حلق'], ['t/10.jpg', '408996', null, 'أساور'], ['t/7.jpg', 'product-4739', null, 'سلاسل'], ['t/2.jpg', 'xxx', null, 'أساور']];
+const tests = [['t/bv.jpg', 'zzz', null, 'أساور']];
 const b = await chromium.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
@@ -33,7 +33,7 @@ for (const [file, target, sel, cat] of tests) {
   const okRes = await page.waitForSelector('.jvs-res a', { timeout: 60000 }).then(() => true).catch(() => false);
   if (!okRes) { console.log('NORES', JSON.stringify(await page.evaluate(() => ({ msg: document.querySelector('.jvs-msg').textContent, go: document.querySelector('.jvs-go').disabled, sel: document.querySelector('.jvs-stage') && getComputedStyle(document.querySelector('.jvs-stage')).display })))); continue; }
   const t2 = Date.now();
-  const r = await page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, top: as.slice(0, 3).map(a => a.textContent.trim().slice(0, 30)) }; }, target);
+  const r = await page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, top: as.slice(0, 8).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0] + ' ' + a.textContent.trim().slice(0, 40)) }; }, target);
   const box = await page.evaluate(() => window.__jvsBox ? Object.values(window.__jvsBox).map(v => v.toFixed(2)) : null);
   console.log('E2E', file, 'box=' + JSON.stringify(box), sel ? 'selected' : 'whole', 'hint=' + hint, 'wait_after_click_ms=' + (t2 - t1), 'from_pick_ms=' + (t2 - t0), JSON.stringify(r));
   const ai = await page.evaluate(() => { const b = document.querySelector('.jvs-ai'); return b && getComputedStyle(b).display !== 'none'; });
@@ -41,7 +41,7 @@ for (const [file, target, sel, cat] of tests) {
   if (ai) {
     const t3 = Date.now();
     const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
-    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), rank: await page.evaluate(t => [...document.querySelectorAll('.jvs-res a')].findIndex(a => a.getAttribute('href').includes(t)) + 1, target), top: await page.evaluate(() => [...document.querySelectorAll('.jvs-res a')].slice(0, 3).map(a => a.textContent.trim().slice(0, 30))), info: await page.evaluate(t => { const i = window.__jvsAi; return i ? { brand: i.brand, err: i.err, cands: i.cands.length, picks: i.picks, ms: i.ms, target_in_cands: i.cands.indexOf(t) + 1 } : null; }, target) }; }
+    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), rank: await page.evaluate(t => [...document.querySelectorAll('.jvs-res a')].findIndex(a => a.getAttribute('href').includes(t)) + 1, target), top: await page.evaluate(() => [...document.querySelectorAll('.jvs-res a')].slice(0, 8).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0] + ' ' + a.textContent.trim().slice(0, 40))), info: await page.evaluate(t => { const i = window.__jvsAi; return i ? { brand: i.brand, err: i.err, cands: i.cands.length, picks: i.picks, ms: i.ms, target_in_cands: i.cands.indexOf(t) + 1 } : null; }, target) }; }
   }
   const after = await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display);
   await page.click('.jvs-go'); await page.waitForTimeout(6000);
