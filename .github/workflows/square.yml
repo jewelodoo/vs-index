@@ -1,0 +1,33 @@
+name: Square piece test
+on:
+  workflow_dispatch:
+  push:
+    paths: [eval/square_test.py, .github/workflows/square.yml]
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { i: [0, 1, 2, 3, 4, 5] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q numpy pillow requests onnxruntime
+      - uses: actions/download-artifact@v4
+        with: { path: det, pattern: "det-*", run-id: 45018708542, github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: python eval/square_test.py shard ${{ matrix.i }} 6
+      - uses: actions/upload-artifact@v4
+        with: { name: "sq-${{ matrix.i }}", path: "sq_*.npz" }
+  eval:
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q numpy pillow requests onnxruntime
+      - uses: actions/download-artifact@v4
+        with: { path: det, pattern: "det-*", run-id: 45018708542, github-token: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: actions/download-artifact@v4
+        with: { path: sq, pattern: "sq-*" }
+      - run: python eval/square_test.py eval
