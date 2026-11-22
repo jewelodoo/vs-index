@@ -17,4 +17,4 @@ jobs:
           python-version: "3.11"
       - run: sudo apt-get update -q && sudo apt-get install -y -q libegl1 libgles2 libgl1
       - run: pip install mediapipe onnxruntime numpy pillow requests
-      - run: python eval/one_test.py
+      - run: python eval/photo_test.py && python eval/one_test.py && PHOTO=ch.jpg CAT=earrings HANDLE=product-4957 python eval/one_test.py && PHOTO=10.jpg HANDLE=408996 python eval/one_test.py
