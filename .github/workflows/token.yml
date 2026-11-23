@@ -1,0 +1,14 @@
+name: Shopify token check
+on:
+  workflow_dispatch:
+  push:
+    paths: [eval/shop_token.py, .github/workflows/token.yml]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q requests && python eval/shop_token.py
+        env:
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
