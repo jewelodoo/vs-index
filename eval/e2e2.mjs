@@ -1,4 +1,4 @@
-// New full-screen visual search (preview theme): pick a photo -> results come by themselves ("الكل" guesses the category).
+// Full-screen visual search (preview theme): pick a photo -> «وش نوع القطعة؟» -> pick the kind -> results; AI button with its spinner.
 // Screenshots go to shots/ (published to the `shots` branch by e2e2.yml).
 import { chromium, devices } from 'playwright';
 import fs from 'fs';
@@ -12,63 +12,30 @@ const page = await ctx.newPage();
 page.on('pageerror', e => console.log('PAGEERROR', e.message));
 page.on('console', m => { if (m.type() === 'error') console.log('CONSOLE', m.text().slice(0, 200)); });
 await page.goto(URL0, { waitUntil: 'load' }); await page.waitForTimeout(4000);
-const ranks = async t => page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, guess: document.querySelector('.jvs-cats button').textContent + ' / on=' + (document.querySelector('.jvs-cats button.on') || {}).textContent, top: as.slice(0, 4).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0]) }; }, t);
+const ranks = async t => page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, on: (document.querySelector('.jvs-cats button.on') || {}).textContent, chips: [...document.querySelectorAll('.jvs-cats button')].map(x => x.textContent).join('|'), top: as.slice(0, 4).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0]) }; }, t);
+const idle = () => page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 60000 }).catch(() => {});
 let k = 0;
 for (const [file, target, chip] of tests) {
   k++;
   await page.evaluate(() => (document.querySelector('.jvs-btn') || document.querySelector('.jvs-in')).click());
   await page.waitForTimeout(1200);
-  await page.screenshot({ path: `shots/${k}a_pick.png` });
   const buf = Buffer.from(await (await fetch(Q + file)).arrayBuffer());
-  const t0 = Date.now();
   await page.setInputFiles('.jvs-pick label:nth-child(2) input', { name: file, mimeType: 'image/jpeg', buffer: buf });
-  await page.waitForTimeout(700);
-  await page.screenshot({ path: `shots/${k}b_loading.png` });
-  // while it is still searching: does the box move? (the phone must not freeze)
-  const before = await page.evaluate(() => document.querySelector('.jvs-sel').style.cssText);
-  const busyNow = await page.evaluate(() => document.querySelector('.jvs-busy').classList.contains('on'));
-  const cc = await page.locator('.jvs-sel i.d').boundingBox();
-  const td = Date.now();
-  if (cc) { await page.mouse.move(cc.x + 22, cc.y + 22); await page.mouse.down(); await page.mouse.move(cc.x + 60, cc.y - 30, { steps: 5 }); await page.mouse.up(); }
-  const dragMs = Date.now() - td;
-  const afterDrag = await page.evaluate(() => document.querySelector('.jvs-sel').style.cssText);
-  console.log('E2E2-LIVE', file, 'busy=' + busyNow, 'drag_ms=' + dragMs, 'moved=' + (before !== afterDrag), 'worker=' + await page.evaluate(() => window.__jvsWorker));
+  await page.waitForTimeout(2500);
+  console.log('E2E2-ASK', file, 'ask=' + await page.evaluate(() => document.querySelector('.jvs-full').classList.contains('ask')), 'results=' + await page.evaluate(() => document.querySelectorAll('.jvs-res a').length), JSON.stringify(await ranks(target)));
+  await page.screenshot({ path: `shots/${k}a_ask.png` });
+  const t0 = Date.now();
+  await page.evaluate(c => [...document.querySelectorAll('.jvs-cats button')].find(x => x.textContent.trim() === c).click(), chip);
   const ok = await page.waitForSelector('.jvs-res a', { timeout: 90000 }).then(() => true).catch(() => false);
-  if (!ok) { console.log('NORES', file, await page.evaluate(() => document.querySelector('.jvs-msg').textContent)); continue; }
-  await page.waitForTimeout(1500);
-  console.log('E2E2', file, 'auto_ms=' + (Date.now() - t0), JSON.stringify(await ranks(target)), 'box=' + JSON.stringify(await page.evaluate(() => { const s = document.querySelector('.jvs-sel'); return s.style.cssText; })));
-  await page.screenshot({ path: `shots/${k}c_results.png` });
-  if (chip) {
-    await page.evaluate(c => [...document.querySelectorAll('.jvs-cats button')].find(x => x.textContent.trim() === c).click(), chip);
-    await page.waitForTimeout(1500); await page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 60000 }).catch(() => {});
-    console.log('E2E2-CHIP', file, chip, JSON.stringify(await ranks(target)));
-    const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.evaluate(() => document.querySelector('.jvs-ai').click())]);
-    if (resp) { await page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2000);
-      console.log('E2E2-AI', file, JSON.stringify(await ranks(target)), 'exact=' + await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), JSON.stringify(await page.evaluate(() => { const i = window.__jvsAi; return i ? { brand: i.brand, picks: i.picks, scanned: i.scanned, sure: i.sure, why: (i.why || '').slice(0, 200) } : null; }))); }
-    await page.screenshot({ path: `shots/${k}f_ai.png` });
-    continue;
-  }
-  // drag the top-left corner a little and see the search run again
-  const c = await page.locator('.jvs-sel i.b').boundingBox();
-  if (c) {
-    await page.mouse.move(c.x + 22, c.y + 22); await page.mouse.down(); await page.mouse.move(c.x + 50, c.y + 40, { steps: 6 }); await page.mouse.up();
-    await page.waitForTimeout(6000);
-    console.log('E2E2-DRAG', file, JSON.stringify(await ranks(target)));
-    await page.screenshot({ path: `shots/${k}d_after_drag.png` });
-  }
-  // open the panel over the photo
-  await page.click('.jvs-grab'); await page.waitForTimeout(600);
-  await page.screenshot({ path: `shots/${k}e_panel_big.png` });
-  const named = await page.evaluate(() => /claude|anthropic/i.test(document.documentElement.outerHTML));
-  console.log('E2E2-UI', file, 'big=' + await page.evaluate(() => document.querySelector('.jvs-full').classList.contains('big')), 'ai_button=' + await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display), 'name_in_page=' + named);
-  await page.click('.jvs-fx');
-  await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(20000);
+  await idle(); await page.waitForTimeout(800);
+  console.log('E2E2', file, chip, 'ok=' + ok, 'ms=' + (Date.now() - t0), JSON.stringify(await ranks(target)), 'ai_shown=' + await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display));
+  await page.screenshot({ path: `shots/${k}b_results.png` });
+  const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), (async () => { await page.evaluate(() => document.querySelector('.jvs-ai').click()); await page.waitForTimeout(700); console.log('E2E2-WAIT', file, 'spinner=' + await page.evaluate(() => document.querySelector('.jvs-wait').classList.contains('on'))); await page.screenshot({ path: `shots/${k}c_ai_wait.png` }); })()]);
+  await page.waitForFunction(() => !document.querySelector('.jvs-wait').classList.contains('on'), null, { timeout: 60000 }).catch(() => {}); await page.waitForTimeout(1500);
+  console.log('E2E2-AI', file, 'status=' + (resp && resp.status()), JSON.stringify(await ranks(target)), 'exact=' + await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), 'name_in_page=' + await page.evaluate(() => /claude|anthropic/i.test(document.documentElement.outerHTML)));
+  await page.screenshot({ path: `shots/${k}d_ai_done.png` });
+  // next photo keeps the kind
+  await page.setInputFiles('.jvs-new input', { name: file, mimeType: 'image/jpeg', buffer: buf }); await page.waitForTimeout(1500);
+  console.log('E2E2-NEXT', file, 'ask=' + await page.evaluate(() => document.querySelector('.jvs-full').classList.contains('ask')), 'on=' + await page.evaluate(() => (document.querySelector('.jvs-cats button.on') || {}).textContent));
 }
-// desktop look
-const d = await (await b.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
-await d.goto(URL0, { waitUntil: 'load' }); await d.waitForTimeout(4000);
-await d.evaluate(() => (document.querySelector('.jvs-btn') || document.querySelector('.jvs-in')).click()); await d.waitForTimeout(800);
-await d.setInputFiles('.jvs-pick label:nth-child(2) input', { name: 'x.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(await (await fetch(Q + 't/16.jpg')).arrayBuffer()) });
-await d.waitForSelector('.jvs-res a', { timeout: 90000 }).catch(() => {}); await d.waitForTimeout(2000);
-await d.screenshot({ path: 'shots/9_desktop.png' });
 await b.close();
