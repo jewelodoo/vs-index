@@ -45,7 +45,6 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-cats::-webkit-scrollbar{display:none}
 .jvs-cats button{flex:none;border:1px solid #ddd;background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13.5px;cursor:pointer;color:#111;white-space:nowrap;min-height:36px}
 .jvs-cats button.on{background:#111;color:#fff;border-color:#111}
-.jvs-cats button.guess{border-color:#111}
 .jvs-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 10px calc(16px + var(--jvs-b,0px) + env(safe-area-inset-bottom))}
 .jvs-msg{text-align:center;font-size:14px;color:#444;margin:10px 0}
 .jvs-res{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px}
@@ -315,7 +314,9 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     if(ks[1]&&v[ks[1]]>=.6*v[ks[0]]) out.push(m.cats[ks[1]].key);
     return out;
   }
-  function markGuess(keys){fv.querySelectorAll('.jvs-cats button').forEach(function(b){b.classList.toggle('guess',keys.indexOf(b.dataset.k)>-1);});}
+  // «الكل» shows what it picked inside its own button («الكل: حلق»), so no other button looks chosen
+  function markGuess(keys){var bs=fv.querySelectorAll('.jvs-cats button'),lab={};bs.forEach(function(b){lab[b.dataset.k]=b.textContent;});
+    bs.forEach(function(b){if(b.dataset.k==='all') b.textContent=keys.length?'الكل: '+keys.map(function(k){return (lab[k]||'').replace(/^الكل.*/,'');}).join(' و'):'الكل';});}
   function search(){
     if(!st.img) return;
     var tok=st.sq=(st.sq||0)+1,stale=function(){return tok!==st.sq;};
@@ -332,6 +333,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
         return A?guess(x.Q,A,x.m,x.d):x.m.cats.map(function(c){return c.key;}); // no all.bin yet: every category
       });
       return keys.then(function(ks){
+        if(stale()) return null;
         if(st.cat==='all') markGuess(ks); else markGuess([]);
         return Promise.all(ks.map(cat)).then(function(Cs){
           return Cs.reduce(function(pr,C){return pr.then(function(all){if(stale()) return all;return rankCat(x.Q,C,x.d).then(function(r){return all.concat(r);});});},Promise.resolve([]));
