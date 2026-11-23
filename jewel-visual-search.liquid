@@ -121,6 +121,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       '<button type="button" class="jvs-ai">ما لقيتي القطعة؟ خلّي الذكاء يدقق 🔍</button></div></div></div>');
     document.body.appendChild(fv);
     fv.querySelector('.jvs-fx').addEventListener('click',close);
+    fv.addEventListener('click',function(e){if(e.target===fv) close();}); // computer: click outside the window
     ov.querySelectorAll('.jvs-pick input').forEach(function(i){i.addEventListener('change',function(){if(i.files[0]) loadImage(i.files[0]); i.value='';});});
     var ni=fv.querySelector('.jvs-new input');ni.addEventListener('change',function(){if(ni.files[0]) loadImage(ni.files[0]); ni.value='';});
     fv.querySelector('.jvs-ai').addEventListener('click',second);
