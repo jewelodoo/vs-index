@@ -45,7 +45,7 @@ TESTS = [  # file, category, regex on the product title that counts as a hit
  ("10.jpg", "bracelets", r"سواروفسكي"), ("11.jpg", "rings", r"فندي"),
  ("../dior_full.jpg", "earrings", r"ديور لولو ذهبي بالشعار"), ("../dior_sel.jpg", "earrings", r"ديور لولو ذهبي بالشعار"),
  ("12.jpg", "bracelets", "handle:copy-14"), ("13.jpg", "bracelets", "handle:408609"),
- ("14.jpg", "bracelets", "handle:408563"), ("15.jpg", "bracelets", "handle:copy-14|408609|408563|408879")]  # 15 = four bracelets stacked: any of them counts  # 23 Nov: new shopper photos from here on (rx "handle:<h>" = that exact product)
+ ("14.jpg", "bracelets", "handle:408563"), ("15.jpg", "bracelets", "handle:copy-14|408609|408563|408879"), ("16.jpg", "bracelets", "handle:408996")]  # 15 = four bracelets stacked: any of them counts  # 23 Nov: new shopper photos from here on (rx "handle:<h>" = that exact product)
 cache = {}
 def catdata(cat):
     if cat not in cache:
