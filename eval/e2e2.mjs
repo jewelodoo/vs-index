@@ -24,6 +24,15 @@ for (const [file, target] of tests) {
   await page.setInputFiles('.jvs-pick label:nth-child(2) input', { name: file, mimeType: 'image/jpeg', buffer: buf });
   await page.waitForTimeout(700);
   await page.screenshot({ path: `shots/${k}b_loading.png` });
+  // while it is still searching: does the box move? (the phone must not freeze)
+  const before = await page.evaluate(() => document.querySelector('.jvs-sel').style.cssText);
+  const busyNow = await page.evaluate(() => document.querySelector('.jvs-busy').classList.contains('on'));
+  const cc = await page.locator('.jvs-sel i.d').boundingBox();
+  const td = Date.now();
+  if (cc) { await page.mouse.move(cc.x + 22, cc.y + 22); await page.mouse.down(); await page.mouse.move(cc.x + 60, cc.y - 30, { steps: 5 }); await page.mouse.up(); }
+  const dragMs = Date.now() - td;
+  const afterDrag = await page.evaluate(() => document.querySelector('.jvs-sel').style.cssText);
+  console.log('E2E2-LIVE', file, 'busy=' + busyNow, 'drag_ms=' + dragMs, 'moved=' + (before !== afterDrag), 'worker=' + await page.evaluate(() => window.__jvsWorker));
   const ok = await page.waitForSelector('.jvs-res a', { timeout: 90000 }).then(() => true).catch(() => false);
   if (!ok) { console.log('NORES', file, await page.evaluate(() => document.querySelector('.jvs-msg').textContent)); continue; }
   await page.waitForTimeout(1500);
