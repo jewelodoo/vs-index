@@ -12,7 +12,7 @@ const page = await ctx.newPage();
 page.on('pageerror', e => console.log('PAGEERROR', e.message));
 page.on('console', m => { if (m.type() === 'error') console.log('CONSOLE', m.text().slice(0, 200)); });
 await page.goto(URL0, { waitUntil: 'load' }); await page.waitForTimeout(4000);
-const ranks = async t => page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, guess: [...document.querySelectorAll('.jvs-cats button.guess')].map(x => x.textContent).join('+'), top: as.slice(0, 4).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0]) }; }, t);
+const ranks = async t => page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, guess: document.querySelector('.jvs-cats button').textContent + ' / on=' + (document.querySelector('.jvs-cats button.on') || {}).textContent, top: as.slice(0, 4).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0]) }; }, t);
 let k = 0;
 for (const [file, target, chip] of tests) {
   k++;
