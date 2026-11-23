@@ -18,7 +18,11 @@ pb = np.frombuffer(_get(RAW + "data/pca.bin").content, np.float32); D = len(pb) 
 titles = {}
 page = 1
 while True:
-    ps = requests.get(f"https://sa-jewel.com/products.json?limit=250&page={page}", headers={"User-Agent": "jewel-vs-test"}).json()["products"]
+    for _t in range(6):  # the store answers 429 when asked too fast
+        _r = requests.get(f"https://sa-jewel.com/products.json?limit=250&page={page}", headers={"User-Agent": "jewel-vs-test"})
+        if _r.ok: break
+        time.sleep(10 * (_t + 1))
+    ps = _r.json()["products"]
     if not ps: break
     for p in ps: titles[p["handle"]] = p["title"]
     page += 1; time.sleep(.3)
