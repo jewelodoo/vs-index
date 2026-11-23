@@ -1,0 +1,35 @@
+name: Background removal test
+# Bracelets only: jewel cut out on white (rembg) in store photos and shopper photos; ranks vs the current index. Nothing published.
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/bg.yml, eval/bg_test.py]
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy: { fail-fast: false, matrix: { i: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q "rembg[cpu]" onnxruntime numpy pillow requests
+      - run: python eval/bg_test.py shard ${{ matrix.i }} 20
+      - uses: actions/upload-artifact@v4
+        with: { name: "bg-${{ matrix.i }}", path: bg/, retention-days: 3 }
+  eval:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q "rembg[cpu]" onnxruntime numpy pillow requests
+      - uses: actions/download-artifact@v4
+        with: { pattern: "bg-*", path: bg, merge-multiple: true }
+      - run: python eval/bg_test.py eval
+      - run: |
+          mkdir -p out_bg && cp bg/*.jpg out_bg/ 2>/dev/null; cd out_bg && git init -q -b bg && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm bg
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" bg
