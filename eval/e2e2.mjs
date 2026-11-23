@@ -4,7 +4,7 @@ import { chromium, devices } from 'playwright';
 import fs from 'fs';
 const URL0 = 'https://sa-jewel.com/?preview_theme_id=132002938938';
 const Q = 'https://raw.githubusercontent.com/jewelodoo/vs-index/queries/';
-const tests = [['t/16.jpg', '408996'], ['t/ch.jpg', 'product-4957']];
+const tests = [['t/17.jpg', 'product-4804', 'حلق']];
 fs.mkdirSync('shots', { recursive: true });
 const b = await chromium.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'] });
@@ -14,7 +14,7 @@ page.on('console', m => { if (m.type() === 'error') console.log('CONSOLE', m.tex
 await page.goto(URL0, { waitUntil: 'load' }); await page.waitForTimeout(4000);
 const ranks = async t => page.evaluate(t => { const as = [...document.querySelectorAll('.jvs-res a')]; return { n: as.length, rank: as.findIndex(a => a.getAttribute('href').includes(t)) + 1, guess: [...document.querySelectorAll('.jvs-cats button.guess')].map(x => x.textContent).join('+'), top: as.slice(0, 4).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0]) }; }, t);
 let k = 0;
-for (const [file, target] of tests) {
+for (const [file, target, chip] of tests) {
   k++;
   await page.evaluate(() => (document.querySelector('.jvs-btn') || document.querySelector('.jvs-in')).click());
   await page.waitForTimeout(1200);
@@ -38,6 +38,16 @@ for (const [file, target] of tests) {
   await page.waitForTimeout(1500);
   console.log('E2E2', file, 'auto_ms=' + (Date.now() - t0), JSON.stringify(await ranks(target)), 'box=' + JSON.stringify(await page.evaluate(() => { const s = document.querySelector('.jvs-sel'); return s.style.cssText; })));
   await page.screenshot({ path: `shots/${k}c_results.png` });
+  if (chip) {
+    await page.evaluate(c => [...document.querySelectorAll('.jvs-cats button')].find(x => x.textContent.trim() === c).click(), chip);
+    await page.waitForTimeout(1500); await page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 60000 }).catch(() => {});
+    console.log('E2E2-CHIP', file, chip, JSON.stringify(await ranks(target)));
+    const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
+    if (resp) { await page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2000);
+      console.log('E2E2-AI', file, JSON.stringify(await ranks(target)), 'exact=' + await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), JSON.stringify(await page.evaluate(() => { const i = window.__jvsAi; return i ? { brand: i.brand, picks: i.picks, scanned: i.scanned, sure: i.sure, why: (i.why || '').slice(0, 200) } : null; }))); }
+    await page.screenshot({ path: `shots/${k}f_ai.png` });
+    continue;
+  }
   // drag the top-left corner a little and see the search run again
   const c = await page.locator('.jvs-sel i.b').boundingBox();
   if (c) {

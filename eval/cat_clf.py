@@ -4,6 +4,7 @@ Test: the shopper photos of eval/photo_test.py (their category is known), theme 
 current vote (40 closest products in all.bin). Writes out_clf/clf.bin (float32: W [K,384] then b [K]) + clf.json (keys)."""
 import os, io, glob, pickle, json, zlib, numpy as np, torch, requests
 from PIL import Image
+import sys; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import build_index as B
 
 allp, members = B.catalog()
