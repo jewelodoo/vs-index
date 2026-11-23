@@ -1,0 +1,22 @@
+name: Blend index test
+# Whole-photo index + piece vectors kept apart (FUSE=1, out_fuse, not published); tries several ways to blend the two scores.
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/fuse.yml, eval/fuse_test.py]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q onnxruntime numpy pillow requests
+      - uses: actions/cache/restore@v4
+        with: { path: cache, key: emb-none, restore-keys: emb- }
+      - run: ls -la cache
+      - run: python build_index.py
+        env: { PIECES: "0", FUSE: "1", OUT: out_fuse }
+      - run: du -sh out_fuse; ls -la out_fuse | head -30
+      - run: DATA_DIR=out_fuse python eval/fuse_test.py

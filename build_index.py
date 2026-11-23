@@ -18,6 +18,7 @@ CACHE_P = "cache/emb_piece.pkl"      # the piece only, key "url|box"
 PIECES = os.environ.get("PIECES", "1") == "1"   # index the jewel, not the photo (OWLv2 boxes, see pieces.py)
 DUAL = os.environ.get("DUAL", "0") == "1"   # whole photo AND the piece: 14 vectors per photo (needs boxes + cache/emb_piece.pkl)
 OUT = os.environ.get("OUT", "out")
+FUSE = os.environ.get("FUSE", "0") == "1"   # test only: also write piece vectors per category ({cat}.p.bin/.p.json, same PCA) to blend scores
 DETECT_MAX = int(os.environ.get("DETECT_MAX", "400"))  # photos to detect inside the daily build; more waits for boxes.yml
 CATS = [  # key, Arabic label, collection handle (None = everything else)
     ("bracelets", "أساور", "accessories-bracelet"),
@@ -155,6 +156,21 @@ def main():
         q.tofile(f"{OUT}/{key}.bin")
         json.dump({"handles": hs, "ids": [allp[h]["id"] for h in hs], "counts": counts}, open(f"{OUT}/{key}.json", "w"), separators=(",", ":"))
         cats.append({"key": key, "label": label, "products": len(hs), "vectors": int(len(V))})
+        if FUSE:  # piece vectors in the same product order (whole-photo PCA)
+            fb = pieces.load_boxes(); fpc = pickle.load(open(CACHE_P, "rb")) if os.path.exists(CACHE_P) else {}
+            def fk(u):
+                b = fb.get(u); return f"{u}|{','.join(map(str, b[:4]))}" if b else u
+            pcounts, pvecs = [], []
+            for h in hs:
+                vv = [fpc[fk(u)] for u in img_urls(allp[h]) if fpc.get(fk(u)) is not None]
+                if not vv: pcounts.append(0); continue
+                v = (np.concatenate(vv).astype(np.float32) - mean) @ W
+                v /= np.linalg.norm(v, axis=1, keepdims=True) + 1e-9
+                pcounts.append(len(v)); pvecs.append(v)
+            P = np.concatenate(pvecs) if pvecs else np.zeros((0, DIM), np.float32)
+            np.clip(np.round(P * 127), -127, 127).astype(np.int8).tofile(f"{OUT}/{key}.p.bin")
+            json.dump({"counts": pcounts}, open(f"{OUT}/{key}.p.json", "w"))
+            print("fuse", key, "products with piece", sum(1 for c in pcounts if c), "of", len(hs))
     json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "dual": DUAL, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
               open(f"{OUT}/manifest.json", "w"), ensure_ascii=False, indent=1)
     print("done", cats)
