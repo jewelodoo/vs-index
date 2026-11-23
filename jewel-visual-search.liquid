@@ -52,7 +52,15 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-res img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;background:#f2f2f2;display:block;margin-bottom:5px}
 .jvs-res .t{height:3em;overflow:hidden}
 .jvs-res .p{font-weight:700;font-size:15px;margin-top:2px}
-.jvs-ai{display:none;width:100%;margin:16px 0 4px;background:#fff;color:#111;border:1.5px solid #111;border-radius:10px;padding:13px;font:inherit;font-size:14px;cursor:pointer}
+.jvs-ai{display:none;position:sticky;bottom:var(--jvs-b,0px);z-index:2;width:100%;margin:14px 0 0;background:#111;color:#fff;border:0;border-radius:10px;padding:14px;font:inherit;font-size:15px;cursor:pointer;box-shadow:0 -10px 0 10px #fff}
+.jvs-ask{display:none;font-size:16px;font-weight:700;padding:2px 14px 10px}
+.jvs-full.ask .jvs-ask{display:block}
+.jvs-full.ask .jvs-cats{flex-wrap:wrap;overflow:visible}
+.jvs-full.ask .jvs-cats button{font-size:15px;padding:9px 16px;min-height:44px}
+.jvs-wait{display:none;flex-direction:column;align-items:center;gap:12px;padding:40px 0;font-size:14px;color:#333}
+.jvs-wait.on{display:flex}
+.jvs-wait span{width:38px;height:38px;border-radius:50%;border:4px solid #e5e5e5;border-top-color:#111;animation:jvsSpin .8s linear infinite}
+.jvs-wait.on~.jvs-res{display:none}
 .jvs-ai[disabled]{opacity:.5}
 .jvs-res .x{position:relative}
 .jvs-res .x:after{content:"نفس القطعة";position:absolute;top:6px;right:6px;background:#111;color:#fff;font-size:11px;padding:2px 8px;border-radius:20px}
@@ -116,7 +124,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     fv=el('<div class="jvs-full" role="dialog" aria-modal="true" aria-label="نتايج البحث بالصورة">'+
       '<div class="jvs-top"><button type="button" class="jvs-fx" aria-label="إغلاق">&times;</button><label class="jvs-new" aria-label="صورة ثانية">'+IMGICON+'<input type="file" accept="image/*"></label></div>'+
       '<div class="jvs-photo"><div class="jvs-stage"><canvas></canvas><div class="jvs-sel"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div class="jvs-busy"><span></span></div></div><div class="jvs-note">حرّكي المربع حول القطعة</div></div>'+
-      '<div class="jvs-panel"><div class="jvs-grab" aria-hidden="true"><span></span></div><div class="jvs-cats"></div><div class="jvs-list"><div class="jvs-msg"></div><div class="jvs-res"></div>'+
+      '<div class="jvs-panel"><div class="jvs-grab" aria-hidden="true"><span></span></div><div class="jvs-ask">وش نوع القطعة؟ اختاري الصنف</div><div class="jvs-cats"></div><div class="jvs-list"><div class="jvs-msg"></div><div class="jvs-wait" role="status"><span></span><b>الذكاء يدقق في القطعة…</b></div><div class="jvs-res"></div>'+
       '<button type="button" class="jvs-ai">ما لقيتي القطعة؟ خلّي الذكاء يدقق 🔍</button></div></div></div>');
     document.body.appendChild(fv);
     fv.querySelector('.jvs-fx').addEventListener('click',close);
@@ -125,11 +133,11 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     var ni=fv.querySelector('.jvs-new input');ni.addEventListener('change',function(){if(ni.files[0]) loadImage(ni.files[0]); ni.value='';});
     fv.querySelector('.jvs-ai').addEventListener('click',second);
     setupCrop();setupPanel();
-    st.cat='all';
+    // the shopper picks the kind of piece (no guessing); the choice stays for her next photos
     manifest().then(function(m){
-      var c=fv.querySelector('.jvs-cats'),list=[{key:'all',label:'الكل'}].concat(m.cats);
-      list.forEach(function(k){var b=document.createElement('button');b.type='button';b.textContent=k.label;b.dataset.k=k.key;if(k.key==='all')b.classList.add('on');
-        b.addEventListener('click',function(){st.cat=k.key;c.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});if(st.img) search();});c.appendChild(b);});
+      var c=fv.querySelector('.jvs-cats');
+      m.cats.forEach(function(k){var b=document.createElement('button');b.type='button';b.textContent=k.label;b.dataset.k=k.key;
+        b.addEventListener('click',function(){st.cat=k.key;fv.classList.remove('ask');c.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});if(st.img) search();});c.appendChild(b);});
     }).catch(function(){msg('البحث بالصورة غير متاح حالياً');});
   }
   function lock(on){document.documentElement.classList.toggle('jvs-lock',on);}
@@ -255,9 +263,10 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       var pb=document.getElementById('PBarNextFrameWrapper');if(pb) fv.style.setProperty('--jvs-b',pb.getBoundingClientRect().height+'px'); // theme preview bar (not for shoppers)
       var ph=fv.querySelector('.jvs-photo');fv.style.setProperty('--jvs-phpx',ph.getBoundingClientRect().height+'px');
       st.img=cv;st.sel=null;st.auto=null;st.ai=0;st.rank=null;drawSel();
-      fv.querySelector('.jvs-res').innerHTML='';fv.querySelector('.jvs-ai').style.display='none';msg('جاري البحث…');busy(true);
-      st.gen=(st.gen||0)+1;st.pre=null;
-      setTimeout(function(){precompute();search();},50);
+      fv.querySelector('.jvs-res').innerHTML='';fv.querySelector('.jvs-ai').style.display='none';fv.querySelector('.jvs-wait').classList.remove('on');
+      st.gen=(st.gen||0)+1;st.pre=null;fv.classList.toggle('ask',!st.cat);
+      if(st.cat){msg('جاري البحث…');busy(true);}else msg('');
+      setTimeout(function(){precompute();if(st.cat) search();},50);
     };
     img.src=url;
   }
@@ -281,7 +290,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       }
       st.sel={x:x0,y:y0,w:x1-x0,h:y1-y0};drawSel();
     });
-    function end(){ if(!mode)return; mode=null; if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;} drawSel(); clearTimeout(st.dt); if(st.sel) st.dt=setTimeout(search,700); }
+    function end(){ if(!mode)return; mode=null; if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;} drawSel(); clearTimeout(st.dt); if(st.sel&&st.cat) st.dt=setTimeout(search,700); }
     stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
   }
   function drawSel(){
@@ -292,8 +301,6 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   }
   function sub(cv,x,y,w,h){var c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext('2d').drawImage(cv,x,y,w,h,0,0,c.width,c.height);return c;}
 
-  var _a;
-  function allIdx(){ return _a||(_a=manifest().then(function(m){ if(!m.all) return null; return Promise.all([fetch(BASE+'all.json?v='+m.version).then(function(r){return r.json();}),fetch(BASE+'all.bin?v='+m.version).then(function(r){return r.arrayBuffer();})]).then(function(x){return {cats:x[0].cats,vec:new Int8Array(x[1])};}); }).catch(function(){_a=null;return null;})); }
   function project(V,P){var d=P.d,D=P.D;return V.map(function(v){var o=new Float32Array(d),n=0;for(var j=0;j<d;j++){var s=0;for(var i=0;i<D;i++) s+=(v[i]-P.mean[i])*P.W[i*d+j];o[j]=s;n+=s*s;}n=Math.sqrt(n)||1;for(j=0;j<d;j++) o[j]/=n;return o;});}
   // best score per product of one category (max over the query crops and the product's photo crops)
   function rankCat(Q,C,d){ // in slices, so a touch on the box is not kept waiting
@@ -304,21 +311,8 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       if(p<hs.length) setTimeout(step,0); else done(out);
     })();});
   }
-  // «الكل»: which category is the photo? the 40 closest products (one vector each, all.bin) vote; a close second is searched too
-  function guess(Q,A,m,d){
-    var n=A.cats.length,sc=new Float32Array(n);
-    for(var p=0;p<n;p++){var off=p*d,b=-9;for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=A.vec[off+j]*qq[j];if(s>b)b=s;}sc[p]=b;}
-    var top=Array.from(sc.keys()).sort(function(x,y){return sc[y]-sc[x];}).slice(0,40),v={};
-    top.forEach(function(p,r){var c=A.cats[p];v[c]=(v[c]||0)+1/(r+5);});
-    var ks=Object.keys(v).sort(function(x,y){return v[y]-v[x];}),out=[m.cats[ks[0]].key];
-    if(ks[1]&&v[ks[1]]>=.6*v[ks[0]]) out.push(m.cats[ks[1]].key);
-    return out;
-  }
-  // «الكل» shows what it picked inside its own button («الكل: حلق»), so no other button looks chosen
-  function markGuess(keys){var bs=fv.querySelectorAll('.jvs-cats button'),lab={};bs.forEach(function(b){lab[b.dataset.k]=b.textContent;});
-    bs.forEach(function(b){if(b.dataset.k==='all') b.textContent=keys.length?'الكل: '+keys.map(function(k){return (lab[k]||'').replace(/^الكل.*/,'');}).join(' و'):'الكل';});}
   function search(){
-    if(!st.img) return;
+    if(!st.img||!st.cat) return;
     var tok=st.sq=(st.sq||0)+1,stale=function(){return tok!==st.sq;};
     msg('جاري البحث…');busy(true);fv.querySelector('.jvs-ai').style.display='none';st.ai=st.ai||0;
     var cv=st.img,W=cv.width,H=cv.height,r=st.sel||{x:0,y:0,w:1,h:1};
@@ -329,12 +323,9 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       return (early?early.catch(fresh):fresh()).then(function(V){return {Q:project(V,a[1]),d:a[1].d,m:a[2]};});
     }).then(function(x){
       if(stale()) return null;
-      var keys=st.cat!=='all'?Promise.resolve([st.cat]):allIdx().then(function(A){
-        return A?guess(x.Q,A,x.m,x.d):x.m.cats.map(function(c){return c.key;}); // no all.bin yet: every category
-      });
+      var keys=Promise.resolve([st.cat]);
       return keys.then(function(ks){
         if(stale()) return null;
-        if(st.cat==='all') markGuess(ks); else markGuess([]);
         return Promise.all(ks.map(cat)).then(function(Cs){
           return Cs.reduce(function(pr,C){return pr.then(function(all){if(stale()) return all;return rankCat(x.Q,C,x.d).then(function(r){return all.concat(r);});});},Promise.resolve([]));
         }).then(function(all){
@@ -367,12 +358,12 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     if(!st.q||!st.rank||st.ai) return; st.ai=1;
     var bt=fv.querySelector('.jvs-ai'),q=st.q,s=Math.min(1,768/Math.max(q.width,q.height)),c=document.createElement('canvas');
     c.width=Math.round(q.width*s);c.height=Math.round(q.height*s);c.getContext('2d').drawImage(q,0,0,c.width,c.height);
-    bt.disabled=true;bt.style.display='none';msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');busy(true);
+    bt.disabled=true;bt.style.display='none';msg('');var wt=fv.querySelector('.jvs-wait');wt.classList.add('on');fv.querySelector('.jvs-list').scrollTop=0;
     fetch(AI,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({img:c.toDataURL('image/jpeg',.85),ids:st.rank})})
       .then(function(r){return r.json();})
       .then(function(j){ if(!j.ok) throw new Error(j.error); window.__jvsAi=j.info; return show(j.ids.slice(0,TOP),j.exact); })
       .catch(function(e){console.error(e);msg('ما قدرنا ندقق الحين، النتايج اللي فوق هي الأقرب');})
-      .then(function(){bt.disabled=false;busy(false);});
+      .then(function(){bt.disabled=false;wt.classList.remove('on');});
   }
 
   function init(){ var n=0;(function t(){ addFieldButtons(); if(!addButton()&&n++<40) setTimeout(t,250); })(); var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimationFrame(function(){pend=0;addFieldButtons();});}).observe(document.body,{childList:true,subtree:true}); }
