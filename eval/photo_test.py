@@ -44,7 +44,8 @@ TESTS = [  # file, category, regex on the product title that counts as a hit
  ("7.jpg", "necklaces", r"سواروفسكي.*ملون"), ("8.jpg", "bracelets", r"فندي زركون بيق لوقو"), ("9.jpg", "bracelets", r"لويس فيتون.*سمبل"),
  ("10.jpg", "bracelets", r"سواروفسكي"), ("11.jpg", "rings", r"فندي"),
  ("../dior_full.jpg", "earrings", r"ديور لولو ذهبي بالشعار"), ("../dior_sel.jpg", "earrings", r"ديور لولو ذهبي بالشعار"),
- ("12.jpg", "bracelets", "handle:copy-14"), ("13.jpg", "bracelets", "handle:408609")]  # 23 Nov: new shopper photos from here on (rx "handle:<h>" = that exact product)
+ ("12.jpg", "bracelets", "handle:copy-14"), ("13.jpg", "bracelets", "handle:408609"),
+ ("14.jpg", "bracelets", "handle:408563"), ("15.jpg", "bracelets", "handle:copy-14|408609|408563|408879")]  # 15 = four bracelets stacked: any of them counts  # 23 Nov: new shopper photos from here on (rx "handle:<h>" = that exact product)
 cache = {}
 def catdata(cat):
     if cat not in cache:
@@ -53,7 +54,7 @@ def catdata(cat):
     return cache[cat]
 def rank(Q, cat, rx):
     hs, V, owner = catdata(cat); S = Q @ V.T; P = np.full((len(Q), len(hs)), -9.0); np.maximum.at(P.T, owner, S.T); a = P.max(0)
-    order = np.argsort(-a); hits = [k for k, i in enumerate(order) if (hs[i] == rx[7:] if rx.startswith("handle:") else re.search(rx, titles.get(hs[i], "")))]
+    order = np.argsort(-a); hits = [k for k, i in enumerate(order) if (hs[i] in rx[7:].split("|") if rx.startswith("handle:") else re.search(rx, titles.get(hs[i], "")))]
     return (hits[0] + 1 if hits else 999), [titles.get(hs[i], hs[i])[:28] for i in order[:3]]
 STRATS = ["full7", "auto_pca_.08", "auto_pca_.1", "auto_pca_.12", "auto_pca_.15", "auto_pca_.2"]
 tot = {s: [] for s in STRATS}

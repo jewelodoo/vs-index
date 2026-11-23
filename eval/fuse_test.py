@@ -14,7 +14,7 @@ def cat(c):
     return C[c]
 def per_prod(Q, V, owner, n):
     S = (Q @ V.T).max(0); a = np.full(n, -9.0); np.maximum.at(a, owner, S); return a
-def hit(h, rx): return h == rx[7:] if rx.startswith("handle:") else bool(re.search(rx, titles.get(h, "")))
+def hit(h, rx): return h in rx[7:].split("|") if rx.startswith("handle:") else bool(re.search(rx, titles.get(h, "")))
 BL = {}
 def blend(name):
     def f(w, p):
