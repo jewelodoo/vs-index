@@ -1,0 +1,19 @@
+name: Look at product photos
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/look.yml, eval/look.py]
+permissions:
+  contents: write
+jobs:
+  look:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q pillow requests
+      - run: python eval/look.py copy-14,408609,408563,408879,van-cleef-bracelet,408703
+      - run: |
+          cd sheets && git init -q -b sheets && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm sheets
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" sheets
