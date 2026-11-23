@@ -3,7 +3,7 @@
 import { chromium, devices } from 'playwright';
 const URL0 = 'https://sa-jewel.com/?preview_theme_id=132002938938';
 const Q = 'https://raw.githubusercontent.com/jewelodoo/vs-index/queries/';
-const tests = [['t/12.jpg', 'copy-14', null, 'أساور'], ['t/13.jpg', '408609', null, 'أساور'], ['t/14.jpg', '408563', null, 'أساور']];
+const tests = [['t/12.jpg', 'copy-14', null, 'أساور'], ['t/13.jpg', '408609', null, 'أساور'], ['t/14.jpg', '408563', null, 'أساور'], ['t/10.jpg', '408996', null, 'أساور'], ['t/ch.jpg', 'product-4957', null, 'حلق'], ['t/bv.jpg', '408879', null, 'أساور']];
 const b = await chromium.launch();
 const ctx = await b.newContext({ ...devices['iPhone 13'] });
 const page = await ctx.newPage();
@@ -41,13 +41,13 @@ for (const [file, target, sel, cat] of tests) {
   if (ai) {
     const t3 = Date.now();
     const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
-    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), rank: await page.evaluate(t => [...document.querySelectorAll('.jvs-res a')].findIndex(a => a.getAttribute('href').includes(t)) + 1, target), top: await page.evaluate(() => [...document.querySelectorAll('.jvs-res a')].slice(0, 8).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0] + ' ' + a.textContent.trim().slice(0, 40))), info: await page.evaluate(t => { const i = window.__jvsAi; return i ? { brand: i.brand, err: i.err, cands: i.cands.length, picks: i.picks, ms: i.ms, target_in_cands: i.cands.indexOf(t) + 1 } : null; }, target) }; }
+    if (resp) { await page.waitForTimeout(2500); aiRes = { status: resp.status(), body: (await resp.text()).slice(0, 120), ms: Date.now() - t3, msg: await page.evaluate(() => document.querySelector('.jvs-msg').textContent), exact: await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), rank: await page.evaluate(t => [...document.querySelectorAll('.jvs-res a')].findIndex(a => a.getAttribute('href').includes(t)) + 1, target), top: await page.evaluate(() => [...document.querySelectorAll('.jvs-res a')].slice(0, 8).map(a => a.getAttribute('href').split('/products/')[1].split('?')[0] + ' ' + a.textContent.trim().slice(0, 40))), info: await page.evaluate(t => { const i = window.__jvsAi; return i ? { brand: i.brand, err: i.err, cands: i.cands.length, picks: i.picks, scanned: i.scanned, sure: i.sure, why: i.why, ms: i.ms, target_in_cands: i.cands.indexOf(t) + 1 } : null; }, target) }; }
   }
   const after = await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display);
   await page.click('.jvs-go'); await page.waitForTimeout(6000);
   const again = await page.evaluate(() => getComputedStyle(document.querySelector('.jvs-ai')).display);
   const named = await page.evaluate(() => /claude|anthropic/i.test(document.documentElement.outerHTML));
-  console.log('E2E-AI', file, 'button=' + ai, 'after_press=' + after, 'after_new_search_same_photo=' + again, 'model_name_in_page=' + named, JSON.stringify(aiRes));
+  console.log('E2E-AI', file, 'exact_ok=' + (aiRes && aiRes.exact ? 'see top[0]' : 'none'), 'button=' + ai, 'after_press=' + after, 'after_new_search_same_photo=' + again, 'model_name_in_page=' + named, JSON.stringify(aiRes));
   await page.evaluate(() => document.querySelector('.jvs-x').click());
   await page.reload({ waitUntil: 'load' }); await page.waitForTimeout(25000); // the store answers 429 if photos run back to back
 }
