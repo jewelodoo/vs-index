@@ -34,6 +34,12 @@ for (const [file, target, chip] of tests) {
   await page.waitForFunction(() => !document.querySelector('.jvs-wait').classList.contains('on'), null, { timeout: 60000 }).catch(() => {}); await page.waitForTimeout(1500);
   console.log('E2E2-AI', file, 'status=' + (resp && resp.status()), JSON.stringify(await ranks(target)), 'exact=' + await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), 'name_in_page=' + await page.evaluate(() => /claude|anthropic/i.test(document.documentElement.outerHTML)));
   await page.screenshot({ path: `shots/${k}d_ai_done.png` });
+  // learning log: the AI match is saved; opening a product is saved
+  const cnt = async () => (await (await fetch('https://jewel-app-ic3o.onrender.com/vs/log/count')).text());
+  console.log('E2E2-LOG after AI', await cnt());
+  await page.evaluate(() => { const a = document.querySelector('.jvs-res a:nth-child(2)'); a.addEventListener('click', e => e.preventDefault(), { once: true }); a.click(); });
+  await page.waitForTimeout(3000);
+  console.log('E2E2-LOG after open', await cnt());
   // next photo keeps the kind
   await page.setInputFiles('.jvs-new input', { name: file, mimeType: 'image/jpeg', buffer: buf }); await page.waitForTimeout(1500);
   console.log('E2E2-NEXT', file, 'ask=' + await page.evaluate(() => document.querySelector('.jvs-full').classList.contains('ask')), 'on=' + await page.evaluate(() => (document.querySelector('.jvs-cats button.on') || {}).textContent));
