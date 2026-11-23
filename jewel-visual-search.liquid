@@ -15,38 +15,61 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 @media (max-width:749px){.jvs-sh{bottom:var(--jvs-b,0px)!important}}.jvs-ov[style*="--jvs-b"] .jvs-sh{border-radius:16px}
 .jvs-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .jvs-hd b{font-size:17px}
-.jvs-x{background:none;border:0;font-size:26px;line-height:1;cursor:pointer;color:#111}
-.jvs-cats{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
-.jvs-cats button{border:1px solid #ddd;background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;color:#111}
+.jvs-x{background:none;border:0;font-size:26px;line-height:1;cursor:pointer;color:#111;width:44px;height:44px;padding:0}
+.jvs-pick{display:flex;gap:10px;margin-bottom:4px}
+.jvs-pick label{flex:1;text-align:center;border:1px dashed #aaa;border-radius:12px;padding:16px 4px;cursor:pointer;font-size:14px;white-space:nowrap;position:relative;overflow:hidden}
+.jvs-pick input,.jvs-new input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.jvs-tip{font-size:13px;color:#666;margin:10px 0 0;text-align:center}
+/* full screen: the photo on top, the results in a panel that slides up */
+.jvs-full{position:fixed;inset:0;z-index:2147483001;background:#000;display:none;direction:rtl;font-family:var(--font-body-family);color:#111;overscroll-behavior:contain}
+.jvs-full.open{display:block}
+.jvs-top{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:calc(6px + env(safe-area-inset-top)) 8px 0}
+.jvs-top button,.jvs-new{width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;position:relative;overflow:hidden}
+.jvs-new svg{width:22px;height:22px}
+.jvs-photo{position:absolute;left:0;right:0;top:0;height:var(--jvs-ph,58%);display:flex;align-items:center;justify-content:center;padding:calc(54px + env(safe-area-inset-top)) 10px 34px;box-sizing:border-box;transition:height .25s}
+.jvs-stage{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;max-height:100%;line-height:0}
+.jvs-stage canvas{display:block;max-width:100%;max-height:calc(var(--jvs-phpx,50vh) - 88px);width:auto;height:auto}
+.jvs-sel{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.45);box-sizing:border-box;display:none}
+.jvs-sel i{position:absolute;width:44px;height:44px}
+.jvs-sel i:after{content:"";position:absolute;width:20px;height:20px;border:0 solid #fff}
+.jvs-sel i.a{top:-22px;right:-22px}.jvs-sel i.a:after{top:16px;right:16px;border-top-width:5px;border-right-width:5px}
+.jvs-sel i.b{top:-22px;left:-22px}.jvs-sel i.b:after{top:16px;left:16px;border-top-width:5px;border-left-width:5px}
+.jvs-sel i.c{bottom:-22px;right:-22px}.jvs-sel i.c:after{bottom:16px;right:16px;border-bottom-width:5px;border-right-width:5px}
+.jvs-sel i.d{bottom:-22px;left:-22px}.jvs-sel i.d:after{bottom:16px;left:16px;border-bottom-width:5px;border-left-width:5px}
+.jvs-note{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:5px 14px;font-size:12px;white-space:nowrap;z-index:2}
+.jvs-panel{position:absolute;left:0;right:0;bottom:0;top:var(--jvs-pt,calc(58% - 18px));background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:top .25s;z-index:2}
+.jvs-full.big .jvs-panel{top:calc(64px + env(safe-area-inset-top))}
+.jvs-grab{flex:none;padding:8px 0 6px;display:flex;justify-content:center;cursor:grab;touch-action:none}
+.jvs-grab:before{content:"";width:44px;height:5px;border-radius:3px;background:#ccc}
+.jvs-cats{flex:none;display:flex;gap:8px;overflow-x:auto;padding:0 12px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jvs-cats::-webkit-scrollbar{display:none}
+.jvs-cats button{flex:none;border:1px solid #ddd;background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13.5px;cursor:pointer;color:#111;white-space:nowrap;min-height:36px}
 .jvs-cats button.on{background:#111;color:#fff;border-color:#111}
-.jvs-pick{display:flex;gap:10px;margin-bottom:12px}
-.jvs-pick label{flex:1;text-align:center;border:1px dashed #aaa;border-radius:12px;padding:12px 4px;cursor:pointer;font-size:13px;white-space:nowrap}
-.jvs-pick label{position:relative;overflow:hidden}
-.jvs-pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
-.jvs-stage{position:relative;display:none;width:fit-content;margin:0 auto 10px;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;overflow:hidden;border-radius:10px}
-.jvs-stage canvas{display:block;max-width:100%;max-height:30vh;max-height:30dvh;width:auto;height:auto;border-radius:10px}
-@media (min-width:750px){.jvs-stage canvas{max-height:45vh}}
-.jvs-sel{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.35);border-radius:6px;pointer-events:none}
-.jvs-tip{font-size:13px;color:#666;margin:4px 0 10px;text-align:center}
-.jvs-go{display:none;position:sticky;bottom:0;z-index:2;box-shadow:0 8px 0 8px #fff;width:100%;background:#111;color:#fff;border:0;border-radius:10px;padding:13px;font:inherit;font-size:15px;cursor:pointer}
-.jvs-go[disabled]{opacity:.5}
-.jvs-msg{text-align:center;font-size:14px;color:#444;margin:12px 0}
-.jvs-res{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
-@media (min-width:750px){.jvs-res{grid-template-columns:repeat(4,1fr)}}
-.jvs-res a{color:inherit;text-decoration:none;font-size:13px;line-height:1.4}
-.jvs-res img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#f4f4f4;display:block;margin-bottom:6px}
-.jvs-res .p{font-weight:600;margin-top:2px}
-.jvs-ai{display:none;width:100%;margin-top:14px;background:#fff;color:#111;border:1.5px solid #111;border-radius:10px;padding:12px;font:inherit;font-size:14px;cursor:pointer}
+.jvs-cats button.guess{border-color:#111}
+.jvs-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 10px calc(16px + env(safe-area-inset-bottom))}
+.jvs-msg{text-align:center;font-size:14px;color:#444;margin:10px 0}
+.jvs-res{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px}
+.jvs-res a{color:inherit;text-decoration:none;font-size:12.5px;line-height:1.5}
+.jvs-res img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;background:#f2f2f2;display:block;margin-bottom:5px}
+.jvs-res .t{height:3em;overflow:hidden}
+.jvs-res .p{font-weight:700;font-size:15px;margin-top:2px}
+.jvs-ai{display:none;width:100%;margin:16px 0 4px;background:#fff;color:#111;border:1.5px solid #111;border-radius:10px;padding:13px;font:inherit;font-size:14px;cursor:pointer}
 .jvs-ai[disabled]{opacity:.5}
 .jvs-res .x{position:relative}
-.jvs-res .x:after{content:"نفس القطعة";position:absolute;top:6px;right:6px;background:#111;color:#fff;font-size:11px;padding:2px 7px;border-radius:20px}
-.jvs-hint{position:absolute;inset:0;pointer-events:none;background:rgba(0,0,0,.28);color:#fff;opacity:0;transition:opacity .3s}
-.jvs-hint.on{opacity:1}
-.jvs-hint i{position:absolute;border:2px dashed #fff;border-radius:6px;animation:jvsBox 1.4s ease-in-out infinite}
-.jvs-hint b{position:absolute;font-size:28px;line-height:1;animation:jvsFinger 1.4s ease-in-out infinite}
-.jvs-hint span{position:absolute;left:8px;right:8px;bottom:10px;text-align:center;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.7)}
-@keyframes jvsBox{0%{left:30%;top:28%;width:0;height:0;opacity:.3}65%,100%{left:22%;top:18%;width:56%;height:52%;opacity:1}}
-@keyframes jvsFinger{0%{left:27%;top:25%}65%,100%{left:72%;top:64%}}
+.jvs-res .x:after{content:"نفس القطعة";position:absolute;top:6px;right:6px;background:#111;color:#fff;font-size:11px;padding:2px 8px;border-radius:20px}
+.jvs-busy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
+.jvs-busy.on{display:flex}
+.jvs-busy:after{content:"";width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:jvsSpin .8s linear infinite}
+@keyframes jvsSpin{to{transform:rotate(360deg)}}
+@media (min-width:750px){
+  .jvs-full{background:rgba(0,0,0,.55)}
+  .jvs-photo{left:auto;right:calc(50% - 470px);width:420px;top:6vh;height:88vh!important;background:#000;border-radius:16px 0 0 16px;padding:60px 14px 40px}
+  .jvs-stage canvas{max-height:calc(88vh - 110px)}
+  .jvs-top{right:calc(50% - 470px);left:auto;width:420px;top:6vh;box-sizing:border-box}
+  .jvs-panel,.jvs-full.big .jvs-panel{top:6vh!important;bottom:6vh;left:calc(50% - 470px);right:calc(50% - 50px);border-radius:0 16px 16px 0;box-shadow:none}
+  .jvs-grab{visibility:hidden;padding:6px 0}
+  .jvs-res{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 </style>
 <script>
 (function(){
@@ -79,30 +102,51 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   }
 
   function el(h){var d=document.createElement('div');d.innerHTML=h.trim();return d.firstChild;}
+  var IMGICON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17l5-5 4 4 2-2 3 3"/></svg>';
+  var fv; // the full-screen view
   function build(){
+    // 1. small window: pick a photo
     ov=el('<div class="jvs-ov" role="dialog" aria-modal="true" aria-label="ابحث بالصورة"><div class="jvs-sh">'+
       '<div class="jvs-hd"><b>ابحث بالصورة</b><button class="jvs-x" aria-label="إغلاق">&times;</button></div>'+
-      '<div class="jvs-tip" style="text-align:right;margin:0">وش نوع القطعة؟</div><div class="jvs-cats"></div>'+
-      '<div class="jvs-pick"><label>📷 صوّر القطعة بالكاميرا<input type="file" accept="image/*" capture="environment"></label><label>🖼️ اختر من الصور<input type="file" accept="image/*"></label></div>'+
-      '<div class="jvs-stage"><canvas></canvas><div class="jvs-sel"></div><div class="jvs-hint"><i></i><b>👆</b><span>اسحب حول القطعة لنتيجة أدق</span></div></div>'+
-      '<div class="jvs-tip jvs-croptip" style="display:none">اسحب بإصبعك حول القطعة عشان نتيجة أدق</div>'+
-      '<button class="jvs-go">ابحث</button><div class="jvs-msg"></div><div class="jvs-res"></div><button type="button" class="jvs-ai">ما لقيتي القطعة؟ خلّي الذكاء يدقق 🔍</button></div></div>');
+      '<div class="jvs-pick"><label>📷 صوّر القطعة<input type="file" accept="image/*" capture="environment"></label><label>🖼️ اختر من الصور<input type="file" accept="image/*"></label></div>'+
+      '<div class="jvs-tip">نلقى لك القطع اللي تشبهها في المتجر</div></div></div>');
     document.body.appendChild(ov);
     ov.addEventListener('click',function(e){if(e.target===ov) close();});
     ov.querySelector('.jvs-x').addEventListener('click',close);
+    // 2. full screen: the photo with the box on top, the results in a panel below
+    fv=el('<div class="jvs-full" role="dialog" aria-modal="true" aria-label="نتايج البحث بالصورة">'+
+      '<div class="jvs-top"><button type="button" class="jvs-fx" aria-label="إغلاق">&times;</button><label class="jvs-new" aria-label="صورة ثانية">'+IMGICON+'<input type="file" accept="image/*"></label></div>'+
+      '<div class="jvs-photo"><div class="jvs-stage"><canvas></canvas><div class="jvs-sel"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div class="jvs-busy"></div></div><div class="jvs-note">حرّكي المربع حول القطعة</div></div>'+
+      '<div class="jvs-panel"><div class="jvs-grab" aria-hidden="true"></div><div class="jvs-cats"></div><div class="jvs-list"><div class="jvs-msg"></div><div class="jvs-res"></div>'+
+      '<button type="button" class="jvs-ai">ما لقيتي القطعة؟ خلّي الذكاء يدقق 🔍</button></div></div></div>');
+    document.body.appendChild(fv);
+    fv.querySelector('.jvs-fx').addEventListener('click',close);
     ov.querySelectorAll('.jvs-pick input').forEach(function(i){i.addEventListener('change',function(){if(i.files[0]) loadImage(i.files[0]); i.value='';});});
-    ov.querySelector('.jvs-go').addEventListener('click',search);ov.querySelector('.jvs-ai').addEventListener('click',second);
-    setupCrop();
+    var ni=fv.querySelector('.jvs-new input');ni.addEventListener('change',function(){if(ni.files[0]) loadImage(ni.files[0]); ni.value='';});
+    fv.querySelector('.jvs-ai').addEventListener('click',second);
+    setupCrop();setupPanel();
+    st.cat='all';
     manifest().then(function(m){
-      var c=ov.querySelector('.jvs-cats');
-      m.cats.forEach(function(k){var b=document.createElement('button');b.type='button';b.textContent=k.label;b.dataset.k=k.key;
-        b.addEventListener('click',function(){st.cat=k.key;c.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});updateGo();});c.appendChild(b);});
+      var c=fv.querySelector('.jvs-cats'),list=[{key:'all',label:'الكل'}].concat(m.cats);
+      list.forEach(function(k){var b=document.createElement('button');b.type='button';b.textContent=k.label;b.dataset.k=k.key;if(k.key==='all')b.classList.add('on');
+        b.addEventListener('click',function(){st.cat=k.key;c.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b)});if(st.img) search();});c.appendChild(b);});
     }).catch(function(){msg('البحث بالصورة غير متاح حالياً');});
   }
-  function open(){ if(!ov) build(); ov.classList.add('open'); var pb=document.getElementById('PBarNextFrameWrapper'); if(pb&&!window.matchMedia('(min-width:750px)').matches) ov.style.setProperty('--jvs-b',pb.getBoundingClientRect().height+'px'); document.documentElement.classList.add('jvs-lock'); warm(); }
-  function close(){ ov.classList.remove('open'); document.documentElement.classList.remove('jvs-lock'); }
-  function msg(t){ ov.querySelector('.jvs-msg').textContent=t||''; }
-  function updateGo(){ var g=ov.querySelector('.jvs-go'); g.style.display=st.img?'block':'none'; g.disabled=!(st.img&&st.cat); g.textContent=st.cat?'ابحث':'اختر نوع القطعة أول'; }
+  function lock(on){document.documentElement.classList.toggle('jvs-lock',on);}
+  function open(){ if(!ov) build(); ov.classList.add('open'); var pb=document.getElementById('PBarNextFrameWrapper'); if(pb&&!window.matchMedia('(min-width:750px)').matches) ov.style.setProperty('--jvs-b',pb.getBoundingClientRect().height+'px'); lock(true); warm(); }
+  function close(){ ov.classList.remove('open'); if(fv) fv.classList.remove('open','big'); lock(false); }
+  function msg(t){ fv.querySelector('.jvs-msg').textContent=t||''; }
+  function busy(on){ fv.querySelector('.jvs-busy').classList.toggle('on',!!on); }
+  // the results panel: swipe or tap the grip to open it over the photo, scroll down at its top to bring the photo back
+  function setupPanel(){
+    var g=fv.querySelector('.jvs-grab'),L=fv.querySelector('.jvs-list'),y0=null;
+    g.addEventListener('pointerdown',function(e){y0=e.clientY;g.setPointerCapture(e.pointerId);});
+    g.addEventListener('pointerup',function(e){if(y0===null)return;var dy=e.clientY-y0;y0=null;if(Math.abs(dy)<8) fv.classList.toggle('big'); else fv.classList.toggle('big',dy<0);});
+    var ty=null;
+    L.addEventListener('touchstart',function(e){ty=e.touches[0].clientY;},{passive:true});
+    L.addEventListener('touchmove',function(e){if(ty===null)return;var dy=e.touches[0].clientY-ty;if(dy<-25&&!fv.classList.contains('big')){fv.classList.add('big');ty=null;}else if(dy>40&&L.scrollTop<=0&&fv.classList.contains('big')){fv.classList.remove('big');ty=null;}},{passive:true});
+    L.addEventListener('wheel',function(e){if(e.deltaY>0&&!fv.classList.contains('big')) fv.classList.add('big');},{passive:true});
+  }
 
   var _m;
   function manifest(){ return _m||(_m=fetch(BASE+'manifest.json?d='+new Date().toISOString().slice(0,10)).then(function(r){if(!r.ok) throw 0; return r.json();})); }
@@ -188,84 +232,119 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       var r;try{r=autobox(V.tok);}catch(e){return V;}
       window.__jvsBox=r;
       if(!r||r.w*r.h>0.85||r.w<.1||r.h<.1) return V;
+      if(img===st.img&&!st.sel){st.auto=r;drawSel();}
       var W=img.width,H=img.height,piece=sub(img,r.x*W,r.y*H,r.w*W,r.h*H);
       return embedAll(E,queryCrops(piece,m)).then(function(V2){return V.concat(V2);},function(){return V;});
     });
   }
-  // start analysing the whole photo as soon as it is picked, while the shopper picks the category
+  // start analysing the whole photo as soon as it is picked (the first search waits for it)
   function precompute(){var g=st.gen,img=st.img;st.pre=Promise.all([embedder(),manifest()]).then(function(a){if(g!==st.gen) throw new Error('stale');return analyse(a[0],a[1],img,true);});st.pre.catch(function(){});}
 
   function loadImage(file){
     var img=new Image(),url=URL.createObjectURL(file);
     img.onload=function(){
       var max=900,s=Math.min(1,max/Math.max(img.width,img.height));
-      var cv=ov.querySelector('.jvs-stage canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
+      var cv=fv.querySelector('.jvs-stage canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);
       cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
-      st.img=cv;st.sel=null;ov.querySelector('.jvs-stage').style.display='block';ov.querySelector('.jvs-croptip').style.display='block';
-      drawSel();ov.querySelector('.jvs-res').innerHTML='';ov.querySelector('.jvs-ai').style.display='none';st.ai=0;msg('');updateGo();
+      ov.classList.remove('open');fv.classList.add('open');fv.classList.remove('big');lock(true);
+      var ph=fv.querySelector('.jvs-photo');fv.style.setProperty('--jvs-phpx',ph.getBoundingClientRect().height+'px');
+      st.img=cv;st.sel=null;st.auto=null;st.ai=0;st.rank=null;drawSel();
+      fv.querySelector('.jvs-res').innerHTML='';fv.querySelector('.jvs-ai').style.display='none';msg('جاري البحث…');busy(true);
       st.gen=(st.gen||0)+1;st.pre=null;
-      var h=ov.querySelector('.jvs-hint');h.classList.add('on');clearTimeout(st.ht);st.ht=setTimeout(function(){h.classList.remove('on');},2200);
-      setTimeout(precompute,300);
+      setTimeout(function(){precompute();search();},50);
     };
     img.src=url;
   }
+  // the box: drag a corner to resize it, drag inside to move it, drag outside it to draw a new one; letting go searches again
   function setupCrop(){
-    var stage=ov.querySelector('.jvs-stage'),start=null;
+    var stage=fv.querySelector('.jvs-stage'),mode=null,start=null,orig=null;
     function pt(e){var r=st.img.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};}
-    stage.addEventListener('pointerdown',function(e){if(!st.img)return;ov.querySelector('.jvs-hint').classList.remove('on');start=pt(e);stage.setPointerCapture(e.pointerId);});
-    stage.addEventListener('pointermove',function(e){if(!start)return;var p=pt(e);st.sel={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(p.x-start.x),h:Math.abs(p.y-start.y)};drawSel();});
-    stage.addEventListener('pointercancel',function(){start=null;});
-    stage.addEventListener('pointerup',function(){start=null;if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;}drawSel();});
+    function cur(){return st.sel||st.auto||{x:0,y:0,w:1,h:1};}
+    stage.addEventListener('pointerdown',function(e){
+      if(!st.img)return; var t=e.target,p=pt(e),r=cur();
+      mode=t.tagName==='I'?t.className:(p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h?'move':'new');
+      start=p;orig={x:r.x,y:r.y,w:r.w,h:r.h};stage.setPointerCapture(e.pointerId);e.preventDefault();
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!mode)return; var p=pt(e),dx=p.x-start.x,dy=p.y-start.y,o=orig,x0=o.x,y0=o.y,x1=o.x+o.w,y1=o.y+o.h;
+      if(mode==='new'){x0=Math.min(start.x,p.x);x1=Math.max(start.x,p.x);y0=Math.min(start.y,p.y);y1=Math.max(start.y,p.y);}
+      else if(mode==='move'){var mx=Math.max(-o.x,Math.min(1-x1,dx)),my=Math.max(-o.y,Math.min(1-y1,dy));x0+=mx;x1+=mx;y0+=my;y1+=my;}
+      else{ // corners in screen terms: a top-right, b top-left, c bottom-right, d bottom-left
+        if(mode==='a'||mode==='c') x1=Math.min(1,Math.max(x0+.06,x1+dx)); else x0=Math.max(0,Math.min(x1-.06,x0+dx));
+        if(mode==='a'||mode==='b') y0=Math.max(0,Math.min(y1-.06,y0+dy)); else y1=Math.min(1,Math.max(y0+.06,y1+dy));
+      }
+      st.sel={x:x0,y:y0,w:x1-x0,h:y1-y0};drawSel();
+    });
+    function end(){ if(!mode)return; mode=null; if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;} drawSel(); if(st.sel) search(); }
+    stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
   }
   function drawSel(){
-    var s=ov.querySelector('.jvs-sel'),r=st.sel;
-    if(!r){s.style.display='none';return;}
+    var s=fv.querySelector('.jvs-sel'),r=st.sel||st.auto;
+    if(!st.img){s.style.display='none';return;}
+    r=r||{x:0,y:0,w:1,h:1};
     s.style.display='block';s.style.left=(r.x*100)+'%';s.style.top=(r.y*100)+'%';s.style.width=(r.w*100)+'%';s.style.height=(r.h*100)+'%';
   }
   function sub(cv,x,y,w,h){var c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext('2d').drawImage(cv,x,y,w,h,0,0,c.width,c.height);return c;}
 
+  var _a;
+  function allIdx(){ return _a||(_a=manifest().then(function(m){ if(!m.all) return null; return Promise.all([fetch(BASE+'all.json?v='+m.version).then(function(r){return r.json();}),fetch(BASE+'all.bin?v='+m.version).then(function(r){return r.arrayBuffer();})]).then(function(x){return {cats:x[0].cats,vec:new Int8Array(x[1])};}); }).catch(function(){_a=null;return null;})); }
+  function project(V,P){var d=P.d,D=P.D;return V.map(function(v){var o=new Float32Array(d),n=0;for(var j=0;j<d;j++){var s=0;for(var i=0;i<D;i++) s+=(v[i]-P.mean[i])*P.W[i*d+j];o[j]=s;n+=s*s;}n=Math.sqrt(n)||1;for(j=0;j<d;j++) o[j]/=n;return o;});}
+  // best score per product of one category (max over the query crops and the product's photo crops)
+  function rankCat(Q,C,d){
+    var vec=C.vec,cnt=C.meta.counts,hs=C.meta.handles,out=[],k=0;
+    for(var p=0;p<hs.length;p++){var b=-9;for(var t=0;t<cnt[p];t++,k++){var off=k*d;for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=vec[off+j]*qq[j];if(s>b)b=s;}}out.push({h:hs[p],s:b});}
+    return out;
+  }
+  // «الكل»: which category is the photo? the 40 closest products (one vector each, all.bin) vote; a close second is searched too
+  function guess(Q,A,m,d){
+    var n=A.cats.length,sc=new Float32Array(n);
+    for(var p=0;p<n;p++){var off=p*d,b=-9;for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=A.vec[off+j]*qq[j];if(s>b)b=s;}sc[p]=b;}
+    var top=Array.from(sc.keys()).sort(function(x,y){return sc[y]-sc[x];}).slice(0,40),v={};
+    top.forEach(function(p,r){var c=A.cats[p];v[c]=(v[c]||0)+1/(r+5);});
+    var ks=Object.keys(v).sort(function(x,y){return v[y]-v[x];}),out=[m.cats[ks[0]].key];
+    if(ks[1]&&v[ks[1]]>=.6*v[ks[0]]) out.push(m.cats[ks[1]].key);
+    return out;
+  }
+  function markGuess(keys){fv.querySelectorAll('.jvs-cats button').forEach(function(b){b.classList.toggle('guess',keys.indexOf(b.dataset.k)>-1);});}
   function search(){
-    if(!st.img||!st.cat) return;
-    var go=ov.querySelector('.jvs-go');go.disabled=true;msg('جاري البحث…');ov.querySelector('.jvs-res').innerHTML='';ov.querySelector('.jvs-ai').style.display='none';
+    if(!st.img) return;
+    var tok=st.sq=(st.sq||0)+1,stale=function(){return tok!==st.sq;};
+    msg('جاري البحث…');busy(true);fv.querySelector('.jvs-ai').style.display='none';st.ai=st.ai||0;
     var cv=st.img,W=cv.width,H=cv.height,r=st.sel||{x:0,y:0,w:1,h:1};
     var base=sub(cv,r.x*W,r.y*H,r.w*W,r.h*H);st.q=base;
     var early=!st.sel&&st.pre;
-    Promise.all([embedder(),pca(),cat(st.cat),manifest()]).then(function(a){
-      var fresh=function(){return analyse(a[0],a[3],base,!st.sel);};
-      return (early?early.catch(fresh):fresh()).then(function(V){return [V,a[1],a[2]];});
-    }).then(function(a){
-      var P=a[1],C=a[2],d=P.d,D=P.D;
-      var Q=a[0].map(function(v){
-        var o=new Float32Array(d),n=0;
-        for(var j=0;j<d;j++){var s=0;for(var i=0;i<D;i++) s+=(v[i]-P.mean[i])*P.W[i*d+j];o[j]=s;n+=s*s;}
-        n=Math.sqrt(n)||1;for(j=0;j<d;j++) o[j]/=n;return o;
+    Promise.all([embedder(),pca(),manifest()]).then(function(a){
+      var fresh=function(){return analyse(a[0],a[2],base,!st.sel);};
+      return (early?early.catch(fresh):fresh()).then(function(V){return {Q:project(V,a[1]),d:a[1].d,m:a[2]};});
+    }).then(function(x){
+      if(stale()) return null;
+      var keys=st.cat!=='all'?Promise.resolve([st.cat]):allIdx().then(function(A){
+        return A?guess(x.Q,A,x.m,x.d):x.m.cats.map(function(c){return c.key;}); // no all.bin yet: every category
       });
-      var vec=C.vec,cnt=C.meta.counts,hs=C.meta.handles,best=new Float32Array(hs.length),k=0;
-      for(var p=0;p<hs.length;p++){
-        var b=-9;
-        for(var t=0;t<cnt[p];t++,k++){
-          var off=k*d;
-          for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=vec[off+j]*qq[j];if(s>b)b=s;}
-        }
-        best[p]=b;
-      }
-      var idx=Array.from(best.keys()).sort(function(x,y){return best[y]-best[x];});
-      st.rank=idx.map(function(i){return hs[i];});
-      return show(st.rank.slice(0,TOP),null);
-    }).then(function(n){ if(n&&AI&&!st.ai) ov.querySelector('.jvs-ai').style.display='block'; })
-    .catch(function(e){console.error(e);msg('صار خطأ، حاول مرة ثانية');}).then(function(){go.disabled=false;});
+      return keys.then(function(ks){
+        if(st.cat==='all') markGuess(ks); else markGuess([]);
+        return Promise.all(ks.map(cat)).then(function(Cs){
+          var all=[];Cs.forEach(function(C){all=all.concat(rankCat(x.Q,C,x.d));});
+          all.sort(function(p,q){return q.s-p.s;});
+          var seen={};st.rank=all.filter(function(o){if(seen[o.h])return false;seen[o.h]=1;return true;}).map(function(o){return o.h;});
+          if(stale()) return null;
+          return show(st.rank.slice(0,TOP),null);
+        });
+      });
+    }).then(function(n){ if(stale()) return; busy(false); if(n&&AI&&!st.ai) fv.querySelector('.jvs-ai').style.display='block'; })
+    .catch(function(e){console.error(e);if(!stale()){busy(false);msg('صار خطأ، حاول مرة ثانية');}});
   }
   var PC={}; // product details already fetched (the store limits repeated requests)
   function show(list,exact){
     return Promise.all(list.map(function(h){return PC[h]||(PC[h]=fetch('/products/'+h+'.js').then(function(r){if(!r.ok){delete PC[h];return null;}return r.json();}).catch(function(){delete PC[h];return null;}));})).then(function(ps){
-      var box=ov.querySelector('.jvs-res'),html='';
+      var box=fv.querySelector('.jvs-res'),html='';
       ps.forEach(function(p,i){
         if(!p) return;
         var img=p.featured_image?(p.featured_image+(p.featured_image.indexOf('?')>-1?'&':'?')+'width=360'):'';
-        html+='<a href="'+p.url+'"'+(exact&&list[i]===exact?' class="x"':'')+'><img loading="lazy" src="'+img+'" alt=""><div>'+p.title.replace(/</g,'&lt;')+'</div><div class="p"><span class="money">SAR '+(p.price/100).toFixed(2)+'</span></div></a>';
+        html+='<a href="'+p.url+'"'+(exact&&list[i]===exact?' class="x"':'')+'><img loading="lazy" src="'+img+'" alt=""><div class="t">'+p.title.replace(/</g,'&lt;')+'</div><div class="p"><span class="money">SAR '+(p.price/100).toFixed(2)+'</span></div></a>';
       });
       box.innerHTML=html;msg(html?'':'ما لقينا نتائج، جرّب صورة أوضح أو قسم ثاني');
-      if(html) box.scrollIntoView({behavior:'smooth',block:'start'});
+      fv.querySelector('.jvs-list').scrollTop=0;
       return html.length;
     });
   }
@@ -273,14 +352,14 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   var AI='https://jewel-app-ic3o.onrender.com/vs/rerank';
   function second(){
     if(!st.q||!st.rank||st.ai) return; st.ai=1;
-    var bt=ov.querySelector('.jvs-ai'),q=st.q,s=Math.min(1,768/Math.max(q.width,q.height)),c=document.createElement('canvas');
+    var bt=fv.querySelector('.jvs-ai'),q=st.q,s=Math.min(1,768/Math.max(q.width,q.height)),c=document.createElement('canvas');
     c.width=Math.round(q.width*s);c.height=Math.round(q.height*s);c.getContext('2d').drawImage(q,0,0,c.width,c.height);
-    bt.disabled=true;bt.style.display='none';msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');
+    bt.disabled=true;bt.style.display='none';msg('الذكاء يقارن القطعة بأقرب المنتجات… لحظات');busy(true);
     fetch(AI,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({img:c.toDataURL('image/jpeg',.85),ids:st.rank})})
       .then(function(r){return r.json();})
       .then(function(j){ if(!j.ok) throw new Error(j.error); window.__jvsAi=j.info; return show(j.ids.slice(0,TOP),j.exact); })
       .catch(function(e){console.error(e);msg('ما قدرنا ندقق الحين، النتايج اللي فوق هي الأقرب');})
-      .then(function(){bt.disabled=false;});
+      .then(function(){bt.disabled=false;busy(false);});
   }
 
   function init(){ var n=0;(function t(){ addFieldButtons(); if(!addButton()&&n++<40) setTimeout(t,250); })(); var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimationFrame(function(){pend=0;addFieldButtons();});}).observe(document.body,{childList:true,subtree:true}); }
