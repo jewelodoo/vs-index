@@ -54,7 +54,7 @@ M = g["M"]; RAW = g["RAW"]
 A = np.fromfile(io.BytesIO(g["_get"](RAW + "data/all.bin").content), np.int8) if False else np.frombuffer(g["_get"](RAW + "data/all.bin").content, np.int8)
 acats = g["_get"](RAW + "data/all.json").json()["cats"]; A = A.reshape(len(acats), -1).astype(np.float32) / 127
 mcats = [c["key"] for c in M["cats"]]
-ok_c = ok_v = 0
+ok_c = ok_v = 0; LAM = [0, .25, .5, 1, 2]; ok_m = {l: 0 for l in LAM}
 for f, c, _ in tests:
     im = Image.open(io.BytesIO(requests.get(RAW + "queries/t/" + f).content)).convert("RGB"); im.thumbnail((900, 900))
     o = g["run"](g["crops"](im, M["crops"])); raw = o[:, 0, :] / np.linalg.norm(o[:, 0, :], axis=1, keepdims=True)
@@ -69,5 +69,9 @@ for f, c, _ in tests:
     for r, p in enumerate(top): v[acats[p]] = v.get(acats[p], 0) + 1 / (r + 5)
     pv = mcats[max(v, key=v.get)]
     ok_c += pc == c; ok_v += pv == c
+    tot = sum(v.values()); share = {mcats[k]: x / tot for k, x in v.items()}
+    for l in LAM:
+        mix = {k: share.get(k, 0) + l * float(conf[ki[k]]) for k in keys}; ok_m[l] += max(mix, key=mix.get) == c
+    print("   vote shares:", {k: round(x, 2) for k, x in sorted(share.items(), key=lambda t: -t[1])[:3]})
     print(f"PHOTO {f:18s} true={c:10s} clf={pc:10s} ({conf.max():.2f}, top2={'+'.join(top2)}) vote={pv}")
-print(f"SUMMARY clf={ok_c}/{len(tests)} vote={ok_v}/{len(tests)}")
+print(f"SUMMARY clf={ok_c}/{len(tests)} vote={ok_v}/{len(tests)} mix(vote share + l*clf prob)=" + str({l: f"{ok_m[l]}/{len(tests)}" for l in LAM}))
