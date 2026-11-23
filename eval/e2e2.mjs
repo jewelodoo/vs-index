@@ -42,7 +42,7 @@ for (const [file, target, chip] of tests) {
     await page.evaluate(c => [...document.querySelectorAll('.jvs-cats button')].find(x => x.textContent.trim() === c).click(), chip);
     await page.waitForTimeout(1500); await page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 60000 }).catch(() => {});
     console.log('E2E2-CHIP', file, chip, JSON.stringify(await ranks(target)));
-    const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.click('.jvs-ai')]);
+    const [resp] = await Promise.all([page.waitForResponse(r => r.url().includes('/vs/rerank') && r.request().method() === 'POST', { timeout: 90000 }).catch(() => null), page.evaluate(() => document.querySelector('.jvs-ai').click())]);
     if (resp) { await page.waitForFunction(() => !document.querySelector('.jvs-busy').classList.contains('on'), null, { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(2000);
       console.log('E2E2-AI', file, JSON.stringify(await ranks(target)), 'exact=' + await page.evaluate(() => (document.querySelector('.jvs-res a.x') || {}).textContent || null), JSON.stringify(await page.evaluate(() => { const i = window.__jvsAi; return i ? { brand: i.brand, picks: i.picks, scanned: i.scanned, sure: i.sure, why: (i.why || '').slice(0, 200) } : null; }))); }
     await page.screenshot({ path: `shots/${k}f_ai.png` });
