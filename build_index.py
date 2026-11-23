@@ -138,6 +138,8 @@ def main():
     mean = sample.mean(0)
     _, _, Vt = np.linalg.svd(sample - mean, full_matrices=False)
     W = Vt[:DIM].T.astype(np.float32)
+    if os.environ.get("HEAD"):  # trained projection (train_head.py) instead of plain PCA; same pca.bin format for the theme
+        z = np.load(os.environ["HEAD"]); mean, W = z["mean"].astype(np.float32), z["W"].astype(np.float32); print("using trained head", os.environ["HEAD"])
     with open(f"{OUT}/pca.bin", "wb") as f:
         f.write(mean.astype(np.float32).tobytes()); f.write(W.tobytes())
     version = hashlib.sha1(str(time.time()).encode()).hexdigest()[:10]

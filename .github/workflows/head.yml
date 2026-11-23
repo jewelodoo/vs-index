@@ -1,0 +1,43 @@
+name: Train background head
+# Fake shopper photos (jewel cut out and put on a wrist/cloth) -> train the 384->96 projection -> test index in out_head (not published).
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/head.yml, synth.py, train_head.py]
+jobs:
+  synth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy: { fail-fast: false, matrix: { i: [0,1,2,3,4,5,6,7,8,9,10,11] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q onnxruntime numpy pillow requests opencv-python-headless
+      - run: python synth.py ${{ matrix.i }} 12
+      - uses: actions/upload-artifact@v4
+        with: { name: "synth-${{ matrix.i }}", path: synth/, retention-days: 3 }
+  train:
+    needs: synth
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q onnxruntime numpy pillow requests
+      - run: pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+      - uses: actions/download-artifact@v4
+        with: { pattern: "synth-*", path: synth, merge-multiple: true }
+      - uses: actions/cache/restore@v4
+        with: { path: cache, key: emb-none, restore-keys: emb- }
+      - run: ls synth | head; ls -la cache
+      - run: python train_head.py
+      - run: python build_index.py
+        env: { PIECES: "0", HEAD: head.npz, OUT: out_head }
+      - run: DATA_DIR=out_head python eval/photo_test.py
+      - run: |
+          mkdir -p sheets && cp synth/look_*.jpg sheets/ 2>/dev/null; cp head.npz sheets/
+          cd sheets && git init -q -b head && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm head
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" head
