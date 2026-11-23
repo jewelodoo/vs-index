@@ -1,0 +1,21 @@
+name: Visual search e2e (full screen)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["eval/e2e2.mjs", ".github/workflows/e2e2.yml"]
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm i playwright@1 && npx playwright install --with-deps chromium
+      - run: node eval/e2e2.mjs
+      - if: always()
+        run: |
+          cd shots && git init -q -b shots && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm shots
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" shots
