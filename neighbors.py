@@ -14,6 +14,8 @@ BRANDS = {
  "valentino": ["فالنتينو", "valentino"], "tory": ["توري", "tory"], "mk": ["مايكل كورس", "michael kors"], "coach": ["كوتش", "coach"],
  "prada": ["برادا", "prada"], "givenchy": ["جيفنشي", "givenchy"], "balenciaga": ["بالنسياقا", "balenciaga"], "dolce": ["دولتشي", "dolce"],
  "pandora": ["باندورا", "pandora"], "piaget": ["بياجيه", "piaget"], "chopard": ["شوبارد", "chopard"], "graff": ["قراف", "graff"],
+ "nomination": ["نوميناشن", "نومينيشن", "nomination"], "apm": ["apm", "اي بي ام"], "roberto": ["روبرتو كوين", "roberto coin"],
+ "montblanc": ["مونت بلانك", "مون بلان", "mont blank", "montblanc"], "aigner": ["اقنر", "ايغنر", "aigner"], "rolex": ["رولكس", "rolex"], "armani": ["ارماني", "armani"],
  "marc": ["مارك جيكوبس", "marc jacobs"], "celine": ["سيلين", "celine"], "miumiu": ["ميو ميو", "miu miu"], "versace": ["فيرزاتشي", "فرزاتشي", "versace"],
 }
 GENERIC = {"", "اكسسوارات جويل", "new", "hold", "jewel", "شنط", "اكسسوارات"}
@@ -26,7 +28,7 @@ def brand_of(title, vendor=""):
     v = norm(vendor)
     for b, w in _BR:
         if w == v or (len(w) > 3 and w in v): return b
-    return None if v in GENERIC else "v:" + v
+    return None if v in GENERIC or re.search(r"متوفر|لون|الوان|جويل", v) else "v:" + v
 
 NB_CATS = ["rings", "earrings", "bracelets", "necklaces", "sets"]
 K = 20
