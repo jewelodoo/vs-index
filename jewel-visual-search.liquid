@@ -132,6 +132,8 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     ov.querySelectorAll('.jvs-pick input').forEach(function(i){i.addEventListener('change',function(){if(i.files[0]) loadImage(i.files[0]); i.value='';});});
     var ni=fv.querySelector('.jvs-new input');ni.addEventListener('change',function(){if(ni.files[0]) loadImage(ni.files[0]); ni.value='';});
     fv.querySelector('.jvs-ai').addEventListener('click',second);
+    fv.querySelector('.jvs-res').addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;var m=(a.getAttribute('href')||'').match(/\/products\/([^?#/]+)/);
+      if(m) vlog('open',decodeURIComponent(m[1]),Array.prototype.indexOf.call(a.parentNode.children,a)+1);});
     setupCrop();setupPanel();
     // the shopper picks the kind of piece (no guessing); the choice stays for her next photos
     manifest().then(function(m){
@@ -320,7 +322,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     var early=!st.sel&&st.pre;
     Promise.all([embedder(),pca(),manifest()]).then(function(a){
       var fresh=function(){return analyse(a[0],a[2],base,!st.sel);};
-      return (early?early.catch(fresh):fresh()).then(function(V){return {Q:project(V,a[1]),d:a[1].d,m:a[2]};});
+      return (early?early.catch(fresh):fresh()).then(function(V){if(tok===st.sq){st.V=V;st.vsel=!!st.sel;st.ver=a[2].version;st.logged={};}return {Q:project(V,a[1]),d:a[1].d,m:a[2]};});
     }).then(function(x){
       if(stale()) return null;
       var keys=Promise.resolve([st.cat]);
@@ -354,6 +356,19 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   }
   // Second look (jewel-app, vsrerank.js). One press per photo.
   var AI='https://jewel-app-ic3o.onrender.com/vs/rerank';
+  // learning log: the photo's numbers (never the photo) with the product it turned out to be, to train the normal search later
+  var LOG=AI?AI.replace('/vs/rerank','/vs/log'):'';
+  function half(f){var b=new Float32Array([f]),i=new Uint32Array(b.buffer)[0],s=(i>>>16)&0x8000,e=((i>>>23)&0xff)-112,m=i&0x7fffff;
+    if(e<=0) return s; if(e>=31) return s|0x7c00; return s|(e<<10)|(m>>>13);}
+  function vlog(kind,handle,rank){
+    try{ if(!LOG||!st.V||!handle||!st.V[0]||st.V[0].length!==384) return; st.logged=st.logged||{};
+      if(st.logged[kind+handle]) return; st.logged[kind+handle]=1;
+      var V=st.V.slice(0,16),u=new Uint16Array(V.length*384),k=0;V.forEach(function(v){for(var j=0;j<384;j++) u[k++]=half(v[j]);});
+      var bin='',by=new Uint8Array(u.buffer);for(var i=0;i<by.length;i+=8192) bin+=String.fromCharCode.apply(null,by.subarray(i,i+8192));
+      var body=JSON.stringify({kind:kind,handle:handle,rank:rank,cat:st.cat,sel:st.vsel,dim:384,ver:st.ver,vec:btoa(bin)});
+      if(!(navigator.sendBeacon&&navigator.sendBeacon(LOG,new Blob([body],{type:'text/plain'})))) fetch(LOG,{method:'POST',body:body,keepalive:true,headers:{'content-type':'text/plain'}}).catch(function(){});
+    }catch(e){}
+  }
   function second(){
     if(!st.q||!st.rank||st.ai) return; st.ai=1;
     var bt=fv.querySelector('.jvs-ai'),q=st.q,s=Math.min(1,768/Math.max(q.width,q.height)),c=document.createElement('canvas');
@@ -361,7 +376,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     bt.disabled=true;bt.style.display='none';msg('');var wt=fv.querySelector('.jvs-wait');wt.classList.add('on');fv.querySelector('.jvs-list').scrollTop=0;
     fetch(AI,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({img:c.toDataURL('image/jpeg',.85),ids:st.rank})})
       .then(function(r){return r.json();})
-      .then(function(j){ if(!j.ok) throw new Error(j.error); window.__jvsAi=j.info; return show(j.ids.slice(0,TOP),j.exact); })
+      .then(function(j){ if(!j.ok) throw new Error(j.error); window.__jvsAi=j.info; if(j.exact) vlog('exact',j.exact,null); return show(j.ids.slice(0,TOP),j.exact); })
       .catch(function(e){console.error(e);msg('ما قدرنا ندقق الحين، النتايج اللي فوق هي الأقرب');})
       .then(function(){bt.disabled=false;wt.classList.remove('on');});
   }
