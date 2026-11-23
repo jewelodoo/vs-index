@@ -179,7 +179,7 @@ def main():
         for h in members[key]:
             vv = [emb(u) for u in img_urls(allp[h]) if emb(u) is not None]
             if vv: prod.append((allp[h]["id"], h, key, np.concatenate(vv).astype(np.float32)))
-    neighbors.build(prod, None, mean, W, out=OUT)
+    neighbors.build(prod, allp, mean, W, out=OUT)
 
 if __name__ == "__main__":
     main()
