@@ -157,37 +157,42 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   function embedder(){
     return _e||(_e=manifest().then(function(m){ return /dinov2/i.test(m.arch||'')?dino(m):mediapipe(m); }));
   }
-  function dino(m){
-    return import(ORT+'ort.wasm.min.mjs').then(function(ort){
-      ort.env.wasm.wasmPaths=ORT; ort.env.wasm.numThreads=1;
-      return ort.InferenceSession.create(m.model,{executionProviders:['wasm']}).then(function(sess){
-        var S=m.size||224,MEAN=[0.485,0.456,0.406],STD=[0.229,0.224,0.225];
-        function px(cv,x,o){var c=document.createElement('canvas');c.width=S;c.height=S;var g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(cv,0,0,S,S);var d=g.getImageData(0,0,S,S).data,n=S*S;for(var i=0;i<n;i++){for(var ch=0;ch<3;ch++) x[o+ch*n+i]=(d[i*4+ch]/255-MEAN[ch])/STD[ch];}}
-        return {embedMany:function(cvs){
-          var N=cvs.length,L=3*S*S,x=new Float32Array(N*L);
-          cvs.forEach(function(cv,k){px(cv,x,k*L);});
-          var feed={};feed[sess.inputNames[0]]=new ort.Tensor('float32',x,[N,3,S,S]);
-          return sess.run(feed).then(function(out){
-            var t=out[sess.outputNames[0]],T=t.dims[1],D=t.dims[2],res=[];
-            for(var k=0;k<N;k++){var v=new Float32Array(t.data.subarray(k*T*D,k*T*D+D)),q=0;for(var i=0;i<D;i++) q+=v[i]*v[i];q=Math.sqrt(q)||1;for(i=0;i<D;i++) v[i]/=q;res.push(v);}
-            res.tok={data:new Float32Array(t.data.subarray(D,T*D)),n:T-1,D:D};
-            return res;
-          });
-        },embed:function(cv){
-          var c=document.createElement('canvas');c.width=S;c.height=S;
-          var g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(cv,0,0,S,S);
-          var px=g.getImageData(0,0,S,S).data,n=S*S,x=new Float32Array(3*n);
-          for(var i=0;i<n;i++){for(var ch=0;ch<3;ch++) x[ch*n+i]=(px[i*4+ch]/255-MEAN[ch])/STD[ch];}
-          var feed={};feed[sess.inputNames[0]]=new ort.Tensor('float32',x,[1,3,S,S]);
-          return sess.run(feed).then(function(out){
-            var t=out[sess.outputNames[0]],D=t.dims[t.dims.length-1],v=new Float32Array(t.data.subarray(0,D)),q=0;
-            for(var i=0;i<D;i++) q+=v[i]*v[i];
-            q=Math.sqrt(q)||1;for(i=0;i<D;i++) v[i]/=q;
-            return v;
-          });
-        }};
-      });
+  // DINOv2 runs in a background worker, so the page (and the box) keeps moving while the phone works; no worker: the page itself
+  var WK="var ort,sess;onmessage=async function(e){var d=e.data;try{if(d.init){ort=await import(d.ORT+'ort.wasm.min.mjs');ort.env.wasm.wasmPaths=d.ORT;ort.env.wasm.numThreads=1;"+
+    "sess=await ort.InferenceSession.create(d.model,{executionProviders:['wasm']});postMessage({id:d.id,ok:1});return;}"+
+    "var f={};f[sess.inputNames[0]]=new ort.Tensor('float32',d.x,[d.N,3,d.S,d.S]);var o=await sess.run(f),t=o[sess.outputNames[0]],a=new Float32Array(t.data);"+
+    "postMessage({id:d.id,data:a,dims:t.dims},[a.buffer]);}catch(err){postMessage({id:d.id,err:String(err)});}};";
+  function worker(m){
+    return new Promise(function(ok,no){
+      var w;try{w=new Worker(URL.createObjectURL(new Blob([WK],{type:'text/javascript'})),{type:'module'});}catch(e){return no(e);}
+      var n=0,wait={},t=setTimeout(function(){no(new Error('worker timeout'));},60000);
+      w.onmessage=function(e){var f=wait[e.data.id];delete wait[e.data.id];if(f) f(e.data);};
+      w.onerror=function(e){clearTimeout(t);no(e);};
+      function call(msg,tr){return new Promise(function(r,j){msg.id=++n;wait[n]=function(d){d.err?j(new Error(d.err)):r(d);};w.postMessage(msg,tr||[]);});}
+      call({init:1,ORT:ORT,model:m.model}).then(function(){clearTimeout(t);ok(function(x,N,S){return call({x:x,N:N,S:S},[x.buffer]);});},no);
     });
+  }
+  function dino(m){
+    var S=m.size||224,MEAN=[0.485,0.456,0.406],STD=[0.229,0.224,0.225];
+    function px(cv,x,o){var c=document.createElement('canvas');c.width=S;c.height=S;var g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(cv,0,0,S,S);var d=g.getImageData(0,0,S,S).data,n=S*S;for(var i=0;i<n;i++){for(var ch=0;ch<3;ch++) x[o+ch*n+i]=(d[i*4+ch]/255-MEAN[ch])/STD[ch];}}
+    function out(data,dims,N){
+      var T=dims[1],D=dims[2],res=[];
+      for(var k=0;k<N;k++){var v=new Float32Array(data.subarray(k*T*D,k*T*D+D)),q=0;for(var i=0;i<D;i++) q+=v[i]*v[i];q=Math.sqrt(q)||1;for(i=0;i<D;i++) v[i]/=q;res.push(v);}
+      res.tok={data:new Float32Array(data.subarray(D,T*D)),n:T-1,D:D};return res;
+    }
+    function make(run){
+      function many(cvs){var N=cvs.length,L=3*S*S,x=new Float32Array(N*L);cvs.forEach(function(cv,k){px(cv,x,k*L);});return run(x,N,S).then(function(r){return out(r.data,r.dims,N);});}
+      return {embedMany:many,embed:function(cv){return many([cv]).then(function(r){return r[0];});}};
+    }
+    var local=function(){
+      return import(ORT+'ort.wasm.min.mjs').then(function(ort){
+        ort.env.wasm.wasmPaths=ORT; ort.env.wasm.numThreads=1;
+        return ort.InferenceSession.create(m.model,{executionProviders:['wasm']}).then(function(sess){
+          return make(function(x,N,S){var f={};f[sess.inputNames[0]]=new ort.Tensor('float32',x,[N,3,S,S]);return sess.run(f).then(function(o){var t=o[sess.outputNames[0]];return {data:t.data,dims:t.dims};});});
+        });
+      });
+    };
+    return worker(m).then(make,function(e){console.warn('jvs worker',e);window.__jvsWorker=0;return local();}).then(function(E){if(window.__jvsWorker!==0)window.__jvsWorker=1;return E;});
   }
   function mediapipe(m){
     return import(MP+'/vision_bundle.mjs').then(function(V){
@@ -262,7 +267,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     function pt(e){var r=st.img.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};}
     function cur(){return st.sel||st.auto||{x:0,y:0,w:1,h:1};}
     stage.addEventListener('pointerdown',function(e){
-      if(!st.img)return; var t=e.target,p=pt(e),r=cur();
+      if(!st.img)return; clearTimeout(st.dt); var t=e.target,p=pt(e),r=cur();
       mode=t.tagName==='I'?t.className:(p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h?'move':'new');
       start=p;orig={x:r.x,y:r.y,w:r.w,h:r.h};stage.setPointerCapture(e.pointerId);e.preventDefault();
     });
@@ -276,7 +281,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       }
       st.sel={x:x0,y:y0,w:x1-x0,h:y1-y0};drawSel();
     });
-    function end(){ if(!mode)return; mode=null; if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;} drawSel(); if(st.sel) search(); }
+    function end(){ if(!mode)return; mode=null; if(st.sel&&(st.sel.w<.06||st.sel.h<.06)){st.sel=null;} drawSel(); clearTimeout(st.dt); if(st.sel) st.dt=setTimeout(search,700); }
     stage.addEventListener('pointerup',end);stage.addEventListener('pointercancel',end);
   }
   function drawSel(){
@@ -291,10 +296,13 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   function allIdx(){ return _a||(_a=manifest().then(function(m){ if(!m.all) return null; return Promise.all([fetch(BASE+'all.json?v='+m.version).then(function(r){return r.json();}),fetch(BASE+'all.bin?v='+m.version).then(function(r){return r.arrayBuffer();})]).then(function(x){return {cats:x[0].cats,vec:new Int8Array(x[1])};}); }).catch(function(){_a=null;return null;})); }
   function project(V,P){var d=P.d,D=P.D;return V.map(function(v){var o=new Float32Array(d),n=0;for(var j=0;j<d;j++){var s=0;for(var i=0;i<D;i++) s+=(v[i]-P.mean[i])*P.W[i*d+j];o[j]=s;n+=s*s;}n=Math.sqrt(n)||1;for(j=0;j<d;j++) o[j]/=n;return o;});}
   // best score per product of one category (max over the query crops and the product's photo crops)
-  function rankCat(Q,C,d){
-    var vec=C.vec,cnt=C.meta.counts,hs=C.meta.handles,out=[],k=0;
-    for(var p=0;p<hs.length;p++){var b=-9;for(var t=0;t<cnt[p];t++,k++){var off=k*d;for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=vec[off+j]*qq[j];if(s>b)b=s;}}out.push({h:hs[p],s:b});}
-    return out;
+  function rankCat(Q,C,d){ // in slices, so a touch on the box is not kept waiting
+    var vec=C.vec,cnt=C.meta.counts,hs=C.meta.handles,out=[],k=0,p=0;
+    return new Promise(function(done){(function step(){
+      var end=Math.min(hs.length,p+300);
+      for(;p<end;p++){var b=-9;for(var t=0;t<cnt[p];t++,k++){var off=k*d;for(var q=0;q<Q.length;q++){var s=0,qq=Q[q];for(var j=0;j<d;j++) s+=vec[off+j]*qq[j];if(s>b)b=s;}}out.push({h:hs[p],s:b});}
+      if(p<hs.length) setTimeout(step,0); else done(out);
+    })();});
   }
   // «الكل»: which category is the photo? the 40 closest products (one vector each, all.bin) vote; a close second is searched too
   function guess(Q,A,m,d){
@@ -325,7 +333,8 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
       return keys.then(function(ks){
         if(st.cat==='all') markGuess(ks); else markGuess([]);
         return Promise.all(ks.map(cat)).then(function(Cs){
-          var all=[];Cs.forEach(function(C){all=all.concat(rankCat(x.Q,C,x.d));});
+          return Cs.reduce(function(pr,C){return pr.then(function(all){if(stale()) return all;return rankCat(x.Q,C,x.d).then(function(r){return all.concat(r);});});},Promise.resolve([]));
+        }).then(function(all){
           all.sort(function(p,q){return q.s-p.s;});
           var seen={};st.rank=all.filter(function(o){if(seen[o.h])return false;seen[o.h]=1;return true;}).map(function(o){return o.h;});
           if(stale()) return null;
