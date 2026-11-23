@@ -1,0 +1,26 @@
+name: Category classifier
+# Trains the «الكل» classifier on the store's photos + fake shopper photos (from the background-head run) and tests it. Publishes nothing.
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/catclf.yml, eval/cat_clf.py]
+jobs:
+  clf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions: { contents: write, actions: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q onnxruntime numpy pillow requests && pip install -q torch --index-url https://download.pytorch.org/whl/cpu
+      - uses: actions/download-artifact@v4
+        with: { pattern: "synth-*", path: synth, merge-multiple: true, run-id: 45120257755, github-token: "${{ secrets.GITHUB_TOKEN }}" }
+        continue-on-error: true
+      - uses: actions/cache/restore@v4
+        with: { path: cache, key: emb-none, restore-keys: emb- }
+      - run: ls synth | head -3; ls -la cache
+      - run: python eval/cat_clf.py
+      - run: |
+          cd out_clf && git init -q -b clf && git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm clf
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" clf
