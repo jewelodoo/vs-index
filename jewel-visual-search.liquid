@@ -26,7 +26,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-top{position:absolute;top:0;left:0;right:0;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:calc(6px + env(safe-area-inset-top)) 8px 0}
 .jvs-top button,.jvs-new{width:44px;height:44px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;position:relative;overflow:hidden}
 .jvs-new svg{width:22px;height:22px}
-.jvs-photo{position:absolute;left:0;right:0;top:0;height:var(--jvs-ph,58%);display:flex;align-items:center;justify-content:center;padding:calc(54px + env(safe-area-inset-top)) 10px 34px;box-sizing:border-box;transition:height .25s}
+.jvs-photo{position:absolute;left:0;right:0;top:0;height:var(--jvs-ph,58%);display:flex;align-items:center;justify-content:center;padding:calc(58px + env(safe-area-inset-top)) 10px 24px;box-sizing:border-box;transition:height .25s}
 .jvs-stage{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;max-width:100%;max-height:100%;line-height:0}
 .jvs-stage canvas{display:block;max-width:100%;max-height:calc(var(--jvs-phpx,50vh) - 88px);width:auto;height:auto}
 .jvs-sel{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.45);box-sizing:border-box;display:none}
@@ -36,11 +36,11 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-sel i.b{top:-22px;left:-22px}.jvs-sel i.b:after{top:16px;left:16px;border-top-width:5px;border-left-width:5px}
 .jvs-sel i.c{bottom:-22px;right:-22px}.jvs-sel i.c:after{bottom:16px;right:16px;border-bottom-width:5px;border-right-width:5px}
 .jvs-sel i.d{bottom:-22px;left:-22px}.jvs-sel i.d:after{bottom:16px;left:16px;border-bottom-width:5px;border-left-width:5px}
-.jvs-note{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:5px 14px;font-size:12px;white-space:nowrap;z-index:2}
+.jvs-note{position:absolute;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:5px 14px;font-size:12px;white-space:nowrap;z-index:2}
 .jvs-panel{position:absolute;left:0;right:0;bottom:0;top:var(--jvs-pt,calc(58% - 18px));background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.25);display:flex;flex-direction:column;transition:top .25s;z-index:2}
 .jvs-full.big .jvs-panel{top:calc(64px + env(safe-area-inset-top))}
 .jvs-grab{flex:none;padding:8px 0 6px;display:flex;justify-content:center;cursor:grab;touch-action:none}
-.jvs-grab:before{content:"";width:44px;height:5px;border-radius:3px;background:#ccc}
+.jvs-grab span{display:block;width:44px;height:5px;border-radius:3px;background:#ccc}
 .jvs-cats{flex:none;display:flex;gap:8px;overflow-x:auto;padding:0 12px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jvs-cats::-webkit-scrollbar{display:none}
 .jvs-cats button{flex:none;border:1px solid #ddd;background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:13.5px;cursor:pointer;color:#111;white-space:nowrap;min-height:36px}
@@ -59,7 +59,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
 .jvs-res .x:after{content:"نفس القطعة";position:absolute;top:6px;right:6px;background:#111;color:#fff;font-size:11px;padding:2px 8px;border-radius:20px}
 .jvs-busy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none}
 .jvs-busy.on{display:flex}
-.jvs-busy:after{content:"";width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:jvsSpin .8s linear infinite}
+.jvs-busy span{display:block;width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;animation:jvsSpin .8s linear infinite}
 @keyframes jvsSpin{to{transform:rotate(360deg)}}
 @media (min-width:750px){
   .jvs-full{background:rgba(0,0,0,.55)}
@@ -116,8 +116,8 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     // 2. full screen: the photo with the box on top, the results in a panel below
     fv=el('<div class="jvs-full" role="dialog" aria-modal="true" aria-label="نتايج البحث بالصورة">'+
       '<div class="jvs-top"><button type="button" class="jvs-fx" aria-label="إغلاق">&times;</button><label class="jvs-new" aria-label="صورة ثانية">'+IMGICON+'<input type="file" accept="image/*"></label></div>'+
-      '<div class="jvs-photo"><div class="jvs-stage"><canvas></canvas><div class="jvs-sel"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div class="jvs-busy"></div></div><div class="jvs-note">حرّكي المربع حول القطعة</div></div>'+
-      '<div class="jvs-panel"><div class="jvs-grab" aria-hidden="true"></div><div class="jvs-cats"></div><div class="jvs-list"><div class="jvs-msg"></div><div class="jvs-res"></div>'+
+      '<div class="jvs-photo"><div class="jvs-stage"><canvas></canvas><div class="jvs-sel"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div><div class="jvs-busy"><span></span></div></div><div class="jvs-note">حرّكي المربع حول القطعة</div></div>'+
+      '<div class="jvs-panel"><div class="jvs-grab" aria-hidden="true"><span></span></div><div class="jvs-cats"></div><div class="jvs-list"><div class="jvs-msg"></div><div class="jvs-res"></div>'+
       '<button type="button" class="jvs-ai">ما لقيتي القطعة؟ خلّي الذكاء يدقق 🔍</button></div></div></div>');
     document.body.appendChild(fv);
     fv.querySelector('.jvs-fx').addEventListener('click',close);
