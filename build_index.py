@@ -20,13 +20,21 @@ DUAL = os.environ.get("DUAL", "0") == "1"   # whole photo AND the piece: 14 vect
 OUT = os.environ.get("OUT", "out")
 FUSE = os.environ.get("FUSE", "0") == "1"   # test only: also write piece vectors per category ({cat}.p.bin/.p.json, same PCA) to blend scores
 DETECT_MAX = int(os.environ.get("DETECT_MAX", "400"))  # photos to detect inside the daily build; more waits for boxes.yml
-CATS = [  # key, Arabic label, collection handle (None = everything else)
+CATS = [  # key, Arabic label, collection handle | list of product types | None (= everything else). Order = membership order = chips order.
     ("bracelets", "أساور", "accessories-bracelet"),
     ("necklaces", "سلاسل", "accessories-necklace"),
     ("earrings", "حلق", "accessories-earrings"),
     ("rings", "خواتم", "accessories-rings"),
     ("sets", "أطقم", "jewelry-set"),
+    ("brooches", "بروش", ["بروش"]),
+    ("anklets", "خلاخل", ["خلخال", "خلاخل"]),
     ("bags", "شنط", "bags"),
+    ("wallets", "محافظ", ["محافظ"]),
+    ("belts", "أحزمة", ["احزمة"]),
+    ("watches", "ساعات", ["اطقم ساعات"]),
+    ("hair", "اكسسوارات شعر", ["اكسسوارات شعر"]),
+    ("piercing", "زمام وبيرسنق", ["زمام", "بيرسنق"]),
+    ("keychains", "ميداليات", ["ميدالية"]),
     ("other", "أخرى", None),
 ]
 CROPS = [(1.0, .5, .5), (0.6, .5, .5), (0.6, .5, .8), (0.45, .5, .6), (0.45, .5, .85), (0.45, .2, .75), (0.45, .8, .75)]
@@ -59,7 +67,10 @@ def catalog():
     print("products", len(allp))
     members, used = {}, set()
     for key, _, coll in CATS:
-        if coll:
+        if isinstance(coll, list):  # by product type, among products no collection above took
+            hs = [h for h, p in allp.items() if h not in used and (p.get("product_type") or "").strip() in coll]
+            used.update(hs)
+        elif coll:
             hs = [p["handle"] for p in feed(f"/collections/{coll}/products.json") if p["handle"] in allp]
             used.update(hs)
         else:
@@ -143,7 +154,7 @@ def main():
     with open(f"{OUT}/pca.bin", "wb") as f:
         f.write(mean.astype(np.float32).tobytes()); f.write(W.tobytes())
     version = hashlib.sha1(str(time.time()).encode()).hexdigest()[:10]
-    cats = []
+    cats = []; all_v, all_c = [], []
     for key, label, _ in CATS:
         hs, counts, vecs = [], [], []
         for h in members[key]:
@@ -158,6 +169,7 @@ def main():
         q.tofile(f"{OUT}/{key}.bin")
         json.dump({"handles": hs, "ids": [allp[h]["id"] for h in hs], "counts": counts}, open(f"{OUT}/{key}.json", "w"), separators=(",", ":"))
         cats.append({"key": key, "label": label, "products": len(hs), "vectors": int(len(V))})
+        off = np.cumsum([0] + counts[:-1]); all_v.append(V[off]); all_c += [len(cats) - 1] * len(hs)  # whole first photo of each product
         if FUSE:  # piece vectors in the same product order (whole-photo PCA)
             fb = pieces.load_boxes(); fpc = pickle.load(open(CACHE_P, "rb")) if os.path.exists(CACHE_P) else {}
             def fk(u):
@@ -173,7 +185,9 @@ def main():
             np.clip(np.round(P * 127), -127, 127).astype(np.int8).tofile(f"{OUT}/{key}.p.bin")
             json.dump({"counts": pcounts}, open(f"{OUT}/{key}.p.json", "w"))
             print("fuse", key, "products with piece", sum(1 for c in pcounts if c), "of", len(hs))
-    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "dual": DUAL, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
+    A = np.concatenate(all_v); np.clip(np.round(A * 127), -127, 127).astype(np.int8).tofile(f"{OUT}/all.bin")
+    json.dump({"cats": all_c}, open(f"{OUT}/all.json", "w"), separators=(",", ":"))
+    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "dual": DUAL, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats, "all": {"products": int(len(A))}},
               open(f"{OUT}/manifest.json", "w"), ensure_ascii=False, indent=1)
     print("done", cats)
     prod = []
