@@ -1,0 +1,23 @@
+name: Dual index test
+# Builds a test index with whole-photo AND piece vectors into out_dual (not published) and runs the 13 shopper photos on it.
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/dual.yml]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -q onnxruntime numpy pillow requests
+      - uses: actions/cache/restore@v4
+        with: { path: cache, key: emb-none, restore-keys: emb- }
+      - run: ls -la cache
+      - run: python build_index.py
+        env: { PIECES: "0", DUAL: "1", OUT: out_dual }
+      - run: du -sh out_dual; ls -la out_dual | head -20
+      - run: DATA_DIR=out_dual python eval/photo_test.py
+      - run: DATA_DIR=out_dual python eval/one_test.py

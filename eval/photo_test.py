@@ -2,11 +2,19 @@
 import io, re, json, time, numpy as np, requests, onnxruntime as ort
 from PIL import Image
 RAW = "https://raw.githubusercontent.com/jewelodoo/vs-index/"
-M = requests.get(RAW + "data/manifest.json").json(); d = M["dim"]
+import os as _os
+DATA_DIR = _os.environ.get("DATA_DIR")  # test a local index (e.g. out_dual) instead of the published one
+class _R:
+    def __init__(s, b): s.content = b
+    def json(s): import json as _j; return _j.loads(s.content)
+def _get(u, *a, **k):
+    if DATA_DIR and u.startswith(RAW + "data/"): return _R(open(_os.path.join(DATA_DIR, u[len(RAW) + 5:]), "rb").read())
+    return requests.get(u, *a, **k)
+M = _get(RAW + "data/manifest.json").json(); d = M["dim"]
 MEAN = np.array([0.485, 0.456, 0.406], np.float32); STD = np.array([0.229, 0.224, 0.225], np.float32)
 open("m.onnx", "wb").write(requests.get(M["model"]).content)
 sess = ort.InferenceSession("m.onnx", providers=["CPUExecutionProvider"]); inp = sess.get_inputs()[0].name
-pb = np.frombuffer(requests.get(RAW + "data/pca.bin").content, np.float32); D = len(pb) // (d + 1); mean, W = pb[:D], pb[D:].reshape(D, d)
+pb = np.frombuffer(_get(RAW + "data/pca.bin").content, np.float32); D = len(pb) // (d + 1); mean, W = pb[:D], pb[D:].reshape(D, d)
 titles = {}
 page = 1
 while True:
@@ -39,7 +47,7 @@ TESTS = [  # file, category, regex on the product title that counts as a hit
 cache = {}
 def catdata(cat):
     if cat not in cache:
-        meta = requests.get(RAW + f"data/{cat}.json").json(); V = np.frombuffer(requests.get(RAW + f"data/{cat}.bin").content, np.int8).reshape(-1, d).astype(np.float32) / 127
+        meta = _get(RAW + f"data/{cat}.json").json(); V = np.frombuffer(_get(RAW + f"data/{cat}.bin").content, np.int8).reshape(-1, d).astype(np.float32) / 127
         cache[cat] = (meta["handles"], V, np.repeat(np.arange(len(meta["counts"])), meta["counts"]))
     return cache[cat]
 def rank(Q, cat, rx):

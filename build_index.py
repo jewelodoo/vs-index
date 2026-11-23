@@ -16,6 +16,8 @@ IMGS = 2            # images per product
 CACHE = "cache/emb_dino.pkl"         # whole photo (PIECES=0)
 CACHE_P = "cache/emb_piece.pkl"      # the piece only, key "url|box"
 PIECES = os.environ.get("PIECES", "1") == "1"   # index the jewel, not the photo (OWLv2 boxes, see pieces.py)
+DUAL = os.environ.get("DUAL", "0") == "1"   # whole photo AND the piece: 14 vectors per photo (needs boxes + cache/emb_piece.pkl)
+OUT = os.environ.get("OUT", "out")
 DETECT_MAX = int(os.environ.get("DETECT_MAX", "400"))  # photos to detect inside the daily build; more waits for boxes.yml
 CATS = [  # key, Arabic label, collection handle (None = everything else)
     ("bracelets", "أساور", "accessories-bracelet"),
@@ -67,7 +69,7 @@ def catalog():
 
 def main():
     global PIECES
-    os.makedirs("out", exist_ok=True); os.makedirs("cache", exist_ok=True)
+    os.makedirs(OUT, exist_ok=True); os.makedirs("cache", exist_ok=True)
     if not os.path.exists("model.onnx"):
         open("model.onnx", "wb").write(S.get(MODEL_URL, timeout=300).content)
     sess = ort.InferenceSession("model.onnx", providers=["CPUExecutionProvider"])
@@ -119,14 +121,23 @@ def main():
     cache = {k: v for k, v in cache.items() if k in live}
     pickle.dump(cache, open(cpath, "wb"))
     emb = lambda u: cache.get(ckey(u))
+    if DUAL and not PIECES:  # add the piece vectors next to the whole-photo ones
+        boxes = pieces.load_boxes(); pc = pickle.load(open(CACHE_P, "rb")) if os.path.exists(CACHE_P) else {}
+        def pkey(u):
+            b = boxes.get(u); return f"{u}|{','.join(map(str, b[:4]))}" if b else u
+        whole = emb
+        def emb(u):
+            a, b = whole(u), pc.get(pkey(u))
+            return a if b is None or a is None else np.concatenate([a, b])
+        print("dual: photos with a piece vector", sum(1 for u in want if pc.get(pkey(u)) is not None), "of", len(want))
 
-    X = np.concatenate([v for v in cache.values()]).astype(np.float32)
+    X = np.concatenate([v for v in cache.values()] + ([v for v in pc.values()] if DUAL and not PIECES else [])).astype(np.float32)
     rng = np.random.default_rng(0)
     sample = X[rng.choice(len(X), min(len(X), 40000), replace=False)]
     mean = sample.mean(0)
     _, _, Vt = np.linalg.svd(sample - mean, full_matrices=False)
     W = Vt[:DIM].T.astype(np.float32)
-    with open("out/pca.bin", "wb") as f:
+    with open(f"{OUT}/pca.bin", "wb") as f:
         f.write(mean.astype(np.float32).tobytes()); f.write(W.tobytes())
     version = hashlib.sha1(str(time.time()).encode()).hexdigest()[:10]
     cats = []
@@ -141,18 +152,18 @@ def main():
         if not hs: continue
         V = np.concatenate(vecs)
         q = np.clip(np.round(V * 127), -127, 127).astype(np.int8)
-        q.tofile(f"out/{key}.bin")
-        json.dump({"handles": hs, "ids": [allp[h]["id"] for h in hs], "counts": counts}, open(f"out/{key}.json", "w"), separators=(",", ":"))
+        q.tofile(f"{OUT}/{key}.bin")
+        json.dump({"handles": hs, "ids": [allp[h]["id"] for h in hs], "counts": counts}, open(f"{OUT}/{key}.json", "w"), separators=(",", ":"))
         cats.append({"key": key, "label": label, "products": len(hs), "vectors": int(len(V))})
-    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
-              open("out/manifest.json", "w"), ensure_ascii=False, indent=1)
+    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "dual": DUAL, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats},
+              open(f"{OUT}/manifest.json", "w"), ensure_ascii=False, indent=1)
     print("done", cats)
     prod = []
     for key, _, _ in CATS:
         for h in members[key]:
             vv = [emb(u) for u in img_urls(allp[h]) if emb(u) is not None]
             if vv: prod.append((allp[h]["id"], h, key, np.concatenate(vv).astype(np.float32)))
-    neighbors.build(prod, None, mean, W)
+    neighbors.build(prod, None, mean, W, out=OUT)
 
 if __name__ == "__main__":
     main()
