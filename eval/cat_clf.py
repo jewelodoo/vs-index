@@ -20,13 +20,15 @@ for k in keys:
             X.append(v.astype(np.float32)); Y += [ki[k]] * len(v); G += [g] * len(v)
 X = np.concatenate(X); Y = np.array(Y); G = np.array(G); S = np.zeros(len(Y), bool)
 hc = {h: k for k in keys for h in members[k]}
+XS, YS, GS = [], [], []
 for f in sorted(glob.glob("synth/synth_*.npz")):
     z = np.load(f)
     for q, h in zip(z["Q"], z["H"]):
         h = str(h)
         if h not in hc: continue
-        X = np.concatenate([X, q.astype(np.float32)]); Y = np.concatenate([Y, [ki[hc[h]]] * len(q)])
-        G = np.concatenate([G, [zlib.crc32(h.encode()) % 10] * len(q)]); S = np.concatenate([S, np.ones(len(q), bool)])
+        XS.append(q.astype(np.float32)); YS += [ki[hc[h]]] * len(q); GS += [zlib.crc32(h.encode()) % 10] * len(q)
+if XS:
+    X = np.concatenate([X] + XS); S = np.concatenate([S, np.ones(len(YS), bool)]); Y = np.concatenate([Y, YS]); G = np.concatenate([G, GS])
 print("samples", len(X), "synthetic", int(S.sum()), "classes", keys, flush=True)
 tr, te = G != 0, G == 0
 cnt = np.bincount(Y[tr], minlength=len(keys)).astype(np.float32); wcls = torch.tensor((cnt.sum() / (len(keys) * np.maximum(cnt, 1))) ** .5)
