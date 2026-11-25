@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["build_index.py", "pieces.py", "neighbors.py", "eval/groups.json", ".github/workflows/build.yml"]
+    paths: ["build_index.py", "pieces.py", "neighbors.py", "learn.py", "learn/**", "eval/groups.json", ".github/workflows/build.yml"]
 permissions:
   contents: write
 concurrency: build-index
@@ -27,6 +27,7 @@ jobs:
       - run: python build_index.py
         env:
           PIECES: "0"   # 22 Nov: the piece-only index lost on the 13 shopper photos (top1 7/13 vs 9/13); boxes stay in the boxes branch
+          VS_LOG_KEY: ${{ secrets.VS_LOG_KEY }}   # 25 Nov: automatic learning from the shoppers' log (learn.py); empty = skipped
       - uses: actions/cache/save@v4
         if: always()
         with:

@@ -5,7 +5,7 @@ import os, sys, json, time, pickle, hashlib, io, concurrent.futures as cf
 import numpy as np, requests
 from PIL import Image
 import onnxruntime as ort
-import neighbors, pieces
+import neighbors, pieces, learn
 
 STORE = os.environ.get("STORE", "https://sa-jewel.com")
 MODEL_URL = "https://huggingface.co/Xenova/dinov2-small/resolve/main/onnx/model_quantized.onnx"  # DINOv2-small, int8
@@ -143,6 +143,7 @@ def main():
             return a if b is None or a is None else np.concatenate([a, b])
         print("dual: photos with a piece vector", sum(1 for u in want if pc.get(pkey(u)) is not None), "of", len(want))
 
+    L = learn.learned(set(allp), embed, crops)  # shoppers' photos the AI or the shopper matched + learn/<handle>/ photos
     X = np.concatenate([v for v in cache.values()] + ([v for v in pc.values()] if DUAL and not PIECES else [])).astype(np.float32)
     rng = np.random.default_rng(0)
     sample = X[rng.choice(len(X), min(len(X), 40000), replace=False)]
@@ -160,6 +161,7 @@ def main():
         for h in members[key]:
             vv = [emb(u) for u in img_urls(allp[h]) if emb(u) is not None]
             if not vv: continue
+            vv += [x.astype(vv[0].dtype) for x in L.get(h, [])]  # learned shopper photos (after the product's own, so all.bin keeps its photo)
             v = (np.concatenate(vv).astype(np.float32) - mean) @ W
             v /= np.linalg.norm(v, axis=1, keepdims=True) + 1e-9
             hs.append(h); counts.append(len(v)); vecs.append(v)
@@ -187,7 +189,7 @@ def main():
             print("fuse", key, "products with piece", sum(1 for c in pcounts if c), "of", len(hs))
     A = np.concatenate(all_v); np.clip(np.round(A * 127), -127, 127).astype(np.int8).tofile(f"{OUT}/all.bin")
     json.dump({"cats": all_c}, open(f"{OUT}/all.json", "w"), separators=(",", ":"))
-    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "dual": DUAL, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "cats": cats, "all": {"products": int(len(A))}},
+    json.dump({"version": version, "dim": DIM, "arch": "dinov2-small", "size": SIZE, "model": MODEL_URL, "crops": CROPS, "pieces": PIECES, "dual": DUAL, "built": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "learned": len(L), "cats": cats, "all": {"products": int(len(A))}},
               open(f"{OUT}/manifest.json", "w"), ensure_ascii=False, indent=1)
     print("done", cats)
     prod = []
