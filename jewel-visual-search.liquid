@@ -331,13 +331,13 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
         return Promise.all(ks.map(cat)).then(function(Cs){
           return Cs.reduce(function(pr,C){return pr.then(function(all){if(stale()) return all;return rankCat(x.Q,C,x.d).then(function(r){return all.concat(r);});});},Promise.resolve([]));
         }).then(function(all){
-          all.sort(function(p,q){return q.s-p.s;});st.top=all.length?all[0].s:0;window.__jvsTop=[st.top,all.length>1?all[1].s:0];
+          all.sort(function(p,q){return q.s-p.s;});st.top=all.length?all[0].s:0;window.__jvsTop=[st.top,all.length>1?all[1].s:0];st.sure=all.length>0&&st.top/127>=SURE&&(all.length<2||(st.top-all[1].s)/127>=GAP);
           var seen={};st.rank=all.filter(function(o){if(seen[o.h])return false;seen[o.h]=1;return true;}).map(function(o){return o.h;});
           if(stale()) return null;
-          return show(st.rank.slice(0,TOP),null);
+          return show(st.rank.slice(0,TOP),st.sure?st.rank[0]:null);
         });
       });
-    }).then(function(n){ if(stale()) return; busy(false); if(n&&AI&&!st.ai&&!(st.top/127>=SURE)) fv.querySelector('.jvs-ai').style.display='block'; })
+    }).then(function(n){ if(stale()) return; busy(false); if(n&&AI&&!st.ai&&!st.sure) fv.querySelector('.jvs-ai').style.display='block'; })
     .catch(function(e){console.error(e);if(!stale()){busy(false);msg('صار خطأ، حاول مرة ثانية');}});
   }
   var PC={}; // product details already fetched (the store limits repeated requests)
@@ -357,7 +357,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   // Second look (jewel-app, vsrerank.js). One press per photo.
   var AI='https://jewel-app-ic3o.onrender.com/vs/rerank';
   // when the first result is (almost) the very same photo, the AI look is not needed, so its button stays hidden
-  var SURE=0.97; // the index is stored as int8 (x127), so 1.0 = the same photo
+  var SURE=0.94,GAP=0.03; // the index is stored as int8 (x127), so 1.0 = the same photo. Sure = first >= 94% and 3% above the second: «نفس القطعة» on it, no AI button
   // learning log: the photo's numbers (never the photo) with the product it turned out to be, to train the normal search later
   var LOG=AI?AI.replace('/vs/rerank','/vs/log'):'';
   function half(f){var b=new Float32Array([f]),i=new Uint32Array(b.buffer)[0],s=(i>>>16)&0x8000,e=((i>>>23)&0xff)-112,m=i&0x7fffff;
