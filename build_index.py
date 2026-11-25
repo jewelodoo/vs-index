@@ -161,9 +161,12 @@ def main():
         for h in members[key]:
             vv = [emb(u) for u in img_urls(allp[h]) if emb(u) is not None]
             if not vv: continue
-            vv += [x.astype(vv[0].dtype) for x in L.get(h, [])]  # learned shopper photos (after the product's own, so all.bin keeps its photo)
+            lv = L.get(h, [])  # learned shopper photos (after the product's own, so all.bin keeps its photo)
+            sc = np.concatenate([np.ones(sum(len(x) for x in vv), np.float32)] + [np.full(len(x), s, np.float32) for x, s in lv])
+            vv = vv + [x.astype(vv[0].dtype) for x, _ in lv]
             v = (np.concatenate(vv).astype(np.float32) - mean) @ W
             v /= np.linalg.norm(v, axis=1, keepdims=True) + 1e-9
+            v *= sc[:, None]  # look-alikes below 1: first in the list, never «نفس القطعة» (theme needs >= 0.94)
             hs.append(h); counts.append(len(v)); vecs.append(v)
         if not hs: continue
         V = np.concatenate(vecs)

@@ -9,7 +9,12 @@ Sources (both optional):
   1. The learning log of the Jewel app (GET /vs/log/export?key=VS_LOG_KEY). The theme sends the raw DINOv2
      numbers of the search (never the photo) when the AI marks a result «نفس القطعة» (kind "exact"), or when the
      shopper opens a product from the results (kind "open", with its place in the list).
-  2. Photos in learn/<product handle>/ in this repository (a photo the owner wants the normal search to know).
+  2. Photos in learn/<product handle>/ in this repository: the very same piece.
+     Photos in learn-similar/<product handle>/: a look-alike (the piece itself is not sold), shown first but never «نفس القطعة».
+
+«نفس القطعة» in the theme needs a score >= 0.94. Look-alikes and "open" searches (the shopper may open a look-alike)
+are stored at SIMILAR x their score (0.9), so they still come first but can never reach that mark; "exact" and
+learn/ photos are stored as they are.
 
 Trusted: every "exact"; an "open" only from the first OPEN_RANK places. At most PER_PRODUCT log searches per
 product (newest first), near-identical searches (cosine >= 0.985) counted once.
@@ -22,6 +27,8 @@ LOG_URL = os.environ.get("VS_LOG_URL", "https://jewel-app-ic3o.onrender.com/vs/l
 OPEN_RANK = int(os.environ.get("LEARN_OPEN_RANK", "6"))
 PER_PRODUCT = int(os.environ.get("LEARN_PER_PRODUCT", "20"))
 SEED_DIR = "learn"
+SIMILAR_DIR = "learn-similar"
+SIMILAR = float(os.environ.get("LEARN_SIMILAR", "0.9"))
 
 
 def _f16(b64, n, dim):
@@ -51,23 +58,26 @@ def log_rows():
     return rows
 
 
-def seeds(embed, crops):
+def seeds(embed, crops, folder, scale):
     out = {}
-    for d in sorted(glob.glob(f"{SEED_DIR}/*/")):
+    for d in sorted(glob.glob(f"{folder}/*/")):
         h = os.path.basename(os.path.normpath(d))
         for f in sorted(glob.glob(d + "*")):
             if not f.lower().endswith((".jpg", ".jpeg", ".png", ".webp")): continue
             try:
                 im = Image.open(f).convert("RGB"); im.thumbnail((900, 900))
-                out.setdefault(h, []).append(embed(crops(im)).astype(np.float32))
+                out.setdefault(h, []).append((embed(crops(im)).astype(np.float32), scale))
             except Exception as e: print("learn: seed photo skipped", f, e)
-    print("learn: seed photos for", len(out), "products")
+    print("learn:", folder, "photos for", len(out), "products")
     return out
 
 
 def learned(handles, embed, crops):
-    """handle -> list of (k, 384) arrays to add next to the product's own photo vectors."""
-    out = {h: v for h, v in seeds(embed, crops).items() if h in handles}
+    """handle -> list of ((k, 384) array, scale) to add next to the product's own photo vectors (scale: 1 same piece, SIMILAR look-alike)."""
+    out = {}
+    for folder, scale in ((SEED_DIR, 1.0), (SIMILAR_DIR, SIMILAR)):
+        for h, v in seeds(embed, crops, folder, scale).items():
+            if h in handles: out.setdefault(h, []).extend(v)
     kept, skipped = {}, {"untrusted": 0, "unknown": 0, "same": 0, "cap": 0, "bad": 0}
     for row in sorted(log_rows(), key=lambda r: -int(r["id"])):  # newest first
         h = row.get("handle")
@@ -79,8 +89,8 @@ def learned(handles, embed, crops):
         if v is None: skipped["bad"] += 1; continue
         have = kept.setdefault(h, [])
         if len(have) >= PER_PRODUCT: skipped["cap"] += 1; continue
-        if any(float(v[0] @ x[0]) >= 0.985 for x in have): skipped["same"] += 1; continue
-        have.append(v)
+        if any(float(v[0] @ x[0][0]) >= 0.985 for x in have): skipped["same"] += 1; continue
+        have.append((v, 1.0 if row.get("kind") == "exact" else SIMILAR))
     for h, vs in kept.items(): out.setdefault(h, []).extend(vs)
     print("learn: shopper searches kept", sum(len(v) for v in kept.values()), "for", len(kept), "products; skipped", skipped)
     print("learn: products with learned photos", len(out))
