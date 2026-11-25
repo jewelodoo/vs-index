@@ -273,7 +273,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     };
     img.src=url;
   }
-  // the box: drag a corner to resize it, drag inside to move it, drag outside it to draw a new one; letting go searches again
+  // the box: drag a corner to resize it, drag inside to move it (a touch outside it does nothing); letting go searches again
   function setupCrop(){
     var stage=fv.querySelector('.jvs-stage'),mode=null,start=null,orig=null;
     function pt(e){var r=st.img.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};}
