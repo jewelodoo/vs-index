@@ -149,6 +149,7 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
   function busy(on){ fv.querySelector('.jvs-busy').classList.toggle('on',!!on); }
   // the results panel: swipe or tap the grip to open it over the photo, scroll down at its top to bring the photo back
   function setupPanel(){
+    new MutationObserver(function(){ var b=fv.classList.contains('big'); if(st.wasBig&&!b) st.unbig=Date.now(); st.wasBig=b; }).observe(fv,{attributes:true,attributeFilter:['class']});
     var g=fv.querySelector('.jvs-grab'),L=fv.querySelector('.jvs-list'),y0=null;
     g.addEventListener('pointerdown',function(e){y0=e.clientY;g.setPointerCapture(e.pointerId);});
     g.addEventListener('pointerup',function(e){if(y0===null)return;var dy=e.clientY-y0;y0=null;if(Math.abs(dy)<8) fv.classList.toggle('big'); else fv.classList.toggle('big',dy<0);});
@@ -278,8 +279,11 @@ html.jvs-lock,html.jvs-lock body{overflow:hidden!important}
     function pt(e){var r=st.img.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))};}
     function cur(){return st.sel||st.auto||{x:0,y:0,w:1,h:1};}
     stage.addEventListener('pointerdown',function(e){
-      if(!st.img)return; clearTimeout(st.dt); var t=e.target,p=pt(e),r=cur();
-      mode=t.tagName==='I'?t.className:(p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h?'move':'new');
+      if(!st.img)return; if(fv.classList.contains('big')||Date.now()-(st.unbig||0)<500){mode=null;return;} // the photo just slid back under a scrolling finger: ignore that touch
+      var t=e.target,p=pt(e),r=cur();
+      mode=t.tagName==='I'?t.className:(p.x>r.x&&p.x<r.x+r.w&&p.y>r.y&&p.y<r.y+r.h?'move':null);
+      if(!mode) return; // a touch outside the box does nothing (it used to draw a new box and search again)
+      clearTimeout(st.dt);
       start=p;orig={x:r.x,y:r.y,w:r.w,h:r.h};stage.setPointerCapture(e.pointerId);e.preventDefault();
     });
     stage.addEventListener('pointermove',function(e){
