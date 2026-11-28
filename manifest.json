@@ -1,0 +1,143 @@
+{
+ "version": "0682ccd49a",
+ "dim": 96,
+ "arch": "dinov2-small",
+ "size": 224,
+ "model": "https://huggingface.co/Xenova/dinov2-small/resolve/main/onnx/model_quantized.onnx",
+ "crops": [
+  [
+   1.0,
+   0.5,
+   0.5
+  ],
+  [
+   0.6,
+   0.5,
+   0.5
+  ],
+  [
+   0.6,
+   0.5,
+   0.8
+  ],
+  [
+   0.45,
+   0.5,
+   0.6
+  ],
+  [
+   0.45,
+   0.5,
+   0.85
+  ],
+  [
+   0.45,
+   0.2,
+   0.75
+  ],
+  [
+   0.45,
+   0.8,
+   0.75
+  ]
+ ],
+ "pieces": false,
+ "dual": false,
+ "built": "2026-11-28T04:46:22Z",
+ "learned": 1,
+ "cats": [
+  {
+   "key": "bracelets",
+   "label": "أساور",
+   "products": 2409,
+   "vectors": 33726
+  },
+  {
+   "key": "necklaces",
+   "label": "سلاسل",
+   "products": 1242,
+   "vectors": 17388
+  },
+  {
+   "key": "earrings",
+   "label": "حلق",
+   "products": 1487,
+   "vectors": 20818
+  },
+  {
+   "key": "rings",
+   "label": "خواتم",
+   "products": 846,
+   "vectors": 11844
+  },
+  {
+   "key": "sets",
+   "label": "أطقم",
+   "products": 659,
+   "vectors": 9226
+  },
+  {
+   "key": "brooches",
+   "label": "بروش",
+   "products": 130,
+   "vectors": 1820
+  },
+  {
+   "key": "anklets",
+   "label": "خلاخل",
+   "products": 143,
+   "vectors": 2002
+  },
+  {
+   "key": "bags",
+   "label": "شنط",
+   "products": 1000,
+   "vectors": 14000
+  },
+  {
+   "key": "wallets",
+   "label": "محافظ",
+   "products": 169,
+   "vectors": 2366
+  },
+  {
+   "key": "belts",
+   "label": "أحزمة",
+   "products": 87,
+   "vectors": 1218
+  },
+  {
+   "key": "watches",
+   "label": "ساعات",
+   "products": 70,
+   "vectors": 980
+  },
+  {
+   "key": "hair",
+   "label": "اكسسوارات شعر",
+   "products": 55,
+   "vectors": 770
+  },
+  {
+   "key": "piercing",
+   "label": "زمام وبيرسنق",
+   "products": 104,
+   "vectors": 1456
+  },
+  {
+   "key": "keychains",
+   "label": "ميداليات",
+   "products": 55,
+   "vectors": 770
+  },
+  {
+   "key": "other",
+   "label": "أخرى",
+   "products": 364,
+   "vectors": 4991
+  }
+ ],
+ "all": {
+  "products": 8820
+ }
+}
